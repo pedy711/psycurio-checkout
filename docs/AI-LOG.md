@@ -127,3 +127,18 @@ by argument:
   error) if essentials are absent. Lesson: render-verify UI built by scripts —
   each of these three failures was invisible in code review and obvious in a
   screenshot.
+
+## 2026-08-11 — Step 11: NullReferenceException on Play — Awake-order assumption
+
+- **Suggested:** TherapistPanel applying its default control values in
+  `Awake()`, calling into `AmbientNoise.SetLevel()`, which used the
+  AudioSource its own `Awake()` creates.
+  **Actual:** Unity guarantees no ordering between different components'
+  Awake calls; on the real machine the panel's Awake ran first and SetLevel
+  dereferenced a null AudioSource. The static screenshot verification could
+  never catch this — it is a Play-mode-only failure.
+  **Caught by:** Pedram pressing Play and screenshotting the Console.
+  **Fix:** defaults now applied in `Start()` (guaranteed to run after all
+  Awakes), and AmbientNoise initializes lazily so early calls are safe
+  regardless. Lesson: cross-component initialization belongs in Start, and
+  editor-side render checks do not exercise runtime lifecycle order.

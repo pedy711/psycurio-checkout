@@ -41,9 +41,68 @@ public static class SceneWiring
         EnsureEventSystem();
         BuildScreenUi(camera, controller);
         WireClickFeedback(camera, controller);
+        WireTherapistLayer(camera);
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
-        Debug.Log("SceneWiring: interactions, speech, register, UI and feedback wired");
+        Debug.Log("SceneWiring: interactions, speech, register, UI, feedback and therapist layer wired");
+    }
+
+    private static void WireTherapistLayer(Camera camera)
+    {
+        var cashier = Object.FindFirstObjectByType<Cashier>();
+        if (cashier == null)
+        {
+            Debug.LogError("SceneWiring: no Cashier — therapist layer skipped");
+            return;
+        }
+
+        var eyeContact = cashier.GetComponent<CashierEyeContact>();
+        if (eyeContact == null)
+        {
+            eyeContact = cashier.gameObject.AddComponent<CashierEyeContact>();
+        }
+        var serializedEye = new SerializedObject(eyeContact);
+        serializedEye.FindProperty("lookTarget").objectReferenceValue = camera.transform;
+        serializedEye.ApplyModifiedPropertiesWithoutUndo();
+
+        var bystandersObject = GameObject.Find("Bystanders");
+        if (bystandersObject == null)
+        {
+            bystandersObject = new GameObject("Bystanders");
+        }
+        var spawner = bystandersObject.GetComponent<PsyCurio.Shop.Therapist.BystanderSpawner>();
+        if (spawner == null)
+        {
+            spawner = bystandersObject.AddComponent<PsyCurio.Shop.Therapist.BystanderSpawner>();
+        }
+        var anchorsRoot = GameObject.Find("QueueAnchors").transform;
+        var serializedSpawner = new SerializedObject(spawner);
+        var anchorArray = serializedSpawner.FindProperty("queueAnchors");
+        anchorArray.arraySize = anchorsRoot.childCount;
+        for (var i = 0; i < anchorsRoot.childCount; i++)
+        {
+            anchorArray.GetArrayElementAtIndex(i).objectReferenceValue = anchorsRoot.Find($"Queue_{i}");
+        }
+        serializedSpawner.FindProperty("bystanderPrefab").objectReferenceValue =
+            ItemContentBuilder.BuildBystanderPrefab();
+        serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
+
+        var ambientObject = GameObject.Find("AmbientNoise");
+        if (ambientObject == null)
+        {
+            ambientObject = new GameObject("AmbientNoise");
+        }
+        if (ambientObject.GetComponent<AudioSource>() == null)
+        {
+            ambientObject.AddComponent<AudioSource>();
+        }
+        var ambient = ambientObject.GetComponent<PsyCurio.Shop.Therapist.AmbientNoise>();
+        if (ambient == null)
+        {
+            ambient = ambientObject.AddComponent<PsyCurio.Shop.Therapist.AmbientNoise>();
+        }
+
+        TherapistUiBuilder.Build(camera, cashier, eyeContact, spawner, ambient);
     }
 
     private static void WireControllerCashier(ShopController controller)

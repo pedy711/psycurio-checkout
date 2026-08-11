@@ -61,9 +61,50 @@ public static class ItemContentBuilder
             BuildDefinition(Items[i], prefab);
         }
         PlaceShelfDisplays();
+        BuildBystanderPrefab();
 
         AssetDatabase.SaveAssets();
         Debug.Log("ItemContentBuilder: six items built and placed on the shelf");
+    }
+
+    /// <summary>
+    /// Greybox mannequin for the therapist panel's queue: capsule body plus
+    /// sphere head, deliberately inert — colliders stripped so it can never
+    /// take a click or a hover.
+    /// </summary>
+    public static GameObject BuildBystanderPrefab()
+    {
+        const string path = "Assets/Prefabs/Bystander.prefab";
+        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        var material = GetOrCreateMaterial(new ItemSpec(
+            "bystander", "Bystander", 0f, new Color(0.47f, 0.51f, 0.58f),
+            PrimitiveType.Capsule, Vector3.one));
+
+        var root = new GameObject("Bystander");
+        var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(root.transform, false);
+        body.transform.localPosition = new Vector3(0f, 0.8f, 0f);
+        body.transform.localScale = new Vector3(0.5f, 0.8f, 0.5f);
+        body.GetComponent<Renderer>().sharedMaterial = material;
+        Object.DestroyImmediate(body.GetComponent<Collider>());
+
+        var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        head.name = "Head";
+        head.transform.SetParent(root.transform, false);
+        head.transform.localPosition = new Vector3(0f, 1.72f, 0f);
+        head.transform.localScale = Vector3.one * 0.3f;
+        head.GetComponent<Renderer>().sharedMaterial = material;
+        Object.DestroyImmediate(head.GetComponent<Collider>());
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return prefab;
     }
 
     private static void EnsureFolders()
