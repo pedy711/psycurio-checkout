@@ -1,0 +1,39 @@
+# Unity generated folders
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Ll]ogs/
+[Uu]serSettings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
+
+# Builds (final verified .apk is force-added once, via LFS)
+[Bb]uilds/
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# IDE / tooling
+.idea/
+.vscode/
+.vsconfig
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# OS
+.DS_Store
+
+# Unity crash reports
+sysinfo.txt
+crashlytics-build.properties
