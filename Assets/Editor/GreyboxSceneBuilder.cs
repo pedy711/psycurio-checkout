@@ -55,11 +55,23 @@ public static class GreyboxSceneBuilder
     private static readonly Vector3 RegisterLocal = new Vector3(0.7f, 0f, 0.05f);
     private static readonly Vector3 CashierStanding = new Vector3(0.55f, 0f, 1.05f);
 
+    // Trails back-right toward the wall: the frustum widens with distance, so
+    // all three stay inside the fixed view (the first placement receded toward
+    // the camera and walked the second and third right out of the frame).
+    // Clear of the counter's right end (x = 1.5) and spaced so the figures
+    // separate on screen instead of stacking along the view ray.
+    // Chosen from an inverse-projection grid of the floor actually visible
+    // right of the counter (the wedge is far smaller than frustum intuition
+    // suggests): distinct screen columns, >0.5 m body separation, clear of
+    // the counter's right end.
+    // All three sit in the far depth band (z 1.3–1.8): only there do figures
+    // render person-scale from the fixed camera — nearer floor makes them
+    // loom huge, and the visible wedge allows nothing further left.
     private static readonly Vector3[] QueuePositions =
     {
-        new Vector3(1.95f, 0f, 0.1f),
-        new Vector3(2.35f, 0f, -0.75f),
-        new Vector3(2.75f, 0f, -1.6f)
+        new Vector3(1.76f, 0f, 1.76f),
+        new Vector3(2.14f, 0f, 1.34f),
+        new Vector3(2.63f, 0f, 1.76f)
     };
 
     [MenuItem("PsyCurio/Rebuild Greybox Scene")]
