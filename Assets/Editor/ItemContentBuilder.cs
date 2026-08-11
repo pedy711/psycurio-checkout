@@ -93,6 +93,7 @@ public static class ItemContentBuilder
         temp.name = spec.Name;
         temp.transform.localScale = spec.Size;
         temp.GetComponent<Renderer>().sharedMaterial = material;
+        temp.AddComponent<PsyCurio.Shop.Interaction.HoverHighlight>();
 
         var path = $"{PrefabsFolder}/{spec.Name}.prefab";
         var prefab = PrefabUtility.SaveAsPrefabAsset(temp, path);
