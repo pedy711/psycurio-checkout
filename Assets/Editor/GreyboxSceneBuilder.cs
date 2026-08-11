@@ -53,7 +53,7 @@ public static class GreyboxSceneBuilder
     private const int SpotsPerBoard = 3;
 
     private static readonly Vector3 RegisterLocal = new Vector3(0.7f, 0f, 0.05f);
-    private static readonly Vector3 CashierStanding = new Vector3(0.95f, 0f, 1.05f);
+    private static readonly Vector3 CashierStanding = new Vector3(0.55f, 0f, 1.05f);
 
     private static readonly Vector3[] QueuePositions =
     {
