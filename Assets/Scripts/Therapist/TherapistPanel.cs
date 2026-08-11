@@ -29,6 +29,10 @@ namespace PsyCurio.Shop.Therapist
         [SerializeField] private BystanderSpawner bystanders;
         [SerializeField] private AmbientNoise ambientNoise;
 
+        [Header("SUDS")]
+        [SerializeField] private Button sudsButton;
+        [SerializeField] private SudsPrompt sudsPrompt;
+
         private readonly ExposureSettings settings = new ExposureSettings();
 
         /// <summary>Live settings; snapshot before persisting.</summary>
@@ -48,6 +52,7 @@ namespace PsyCurio.Shop.Therapist
             delaySlider.onValueChanged.AddListener(ApplyDelay);
             bystanderSlider.onValueChanged.AddListener(ApplyBystanders);
             noiseSlider.onValueChanged.AddListener(ApplyNoise);
+            sudsButton.onClick.AddListener(sudsPrompt.Open);
 
             ApplyEyeContact(eyeContactToggle.isOn);
             ApplyDelay(delaySlider.value);

@@ -18,7 +18,7 @@ public static class TherapistUiBuilder
     private static readonly Color LabelColor = new Color(0.88f, 0.9f, 0.93f);
 
     public static void Build(Camera camera, Cashier cashier, CashierEyeContact eyeContact,
-        BystanderSpawner bystanders, AmbientNoise ambientNoise)
+        BystanderSpawner bystanders, AmbientNoise ambientNoise, SudsPrompt sudsPrompt)
     {
         var existing = GameObject.Find("TherapistUi");
         if (existing != null)
@@ -91,6 +91,9 @@ public static class TherapistUiBuilder
         var noiseLabel = Label(panel, font, "Ambient noise: 0 %", 24f, LabelColor, FontStyles.Normal, 30f);
         var noiseSlider = BuildSlider(panel, resources, 0f, 1f, wholeNumbers: false);
 
+        Spacer(panel, 14f);
+        var sudsButton = BuildSudsButton(panel, resources, font);
+
         var absorber = new GameObject("Spacer", typeof(RectTransform));
         absorber.transform.SetParent(panel.transform, false);
         absorber.AddComponent<LayoutElement>().flexibleHeight = 1f;
@@ -111,7 +114,41 @@ public static class TherapistUiBuilder
         serialized.FindProperty("cashier").objectReferenceValue = cashier;
         serialized.FindProperty("bystanders").objectReferenceValue = bystanders;
         serialized.FindProperty("ambientNoise").objectReferenceValue = ambientNoise;
+        serialized.FindProperty("sudsButton").objectReferenceValue = sudsButton;
+        serialized.FindProperty("sudsPrompt").objectReferenceValue = sudsPrompt;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static Button BuildSudsButton(GameObject parent, DefaultControls.Resources resources,
+        TMP_FontAsset font)
+    {
+        var button = new GameObject("SudsButton", typeof(RectTransform));
+        button.transform.SetParent(parent.transform, false);
+        var buttonImage = button.AddComponent<Image>();
+        buttonImage.sprite = resources.standard;
+        buttonImage.type = Image.Type.Sliced;
+        buttonImage.color = Accent;
+        var buttonComponent = button.AddComponent<Button>();
+        buttonComponent.targetGraphic = buttonImage;
+        var element = button.AddComponent<LayoutElement>();
+        element.minHeight = 56f;
+        element.preferredHeight = 56f;
+        element.flexibleHeight = 0f;
+
+        var labelObject = new GameObject("Label", typeof(RectTransform));
+        labelObject.transform.SetParent(button.transform, false);
+        var labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        var label = labelObject.AddComponent<TextMeshProUGUI>();
+        label.font = font;
+        label.fontSize = 26f;
+        label.color = Color.white;
+        label.alignment = TextAlignmentOptions.Center;
+        label.text = "Request SUDS rating";
+        return buttonComponent;
     }
 
     private static GameObject Row(GameObject parent, float height)

@@ -102,7 +102,27 @@ public static class SceneWiring
             ambient = ambientObject.AddComponent<PsyCurio.Shop.Therapist.AmbientNoise>();
         }
 
-        TherapistUiBuilder.Build(camera, cashier, eyeContact, spawner, ambient);
+        var sudsPrompt = SudsUiBuilder.Build(camera);
+        TherapistUiBuilder.Build(camera, cashier, eyeContact, spawner, ambient, sudsPrompt);
+        WireSessionLogger(sudsPrompt);
+    }
+
+    private static void WireSessionLogger(PsyCurio.Shop.Therapist.SudsPrompt sudsPrompt)
+    {
+        var controller = Object.FindFirstObjectByType<ShopController>();
+        var panel = Object.FindFirstObjectByType<PsyCurio.Shop.Therapist.TherapistPanel>();
+        var shop = controller.gameObject;
+
+        var logger = shop.GetComponent<PsyCurio.Shop.Therapist.SessionLogger>();
+        if (logger == null)
+        {
+            logger = shop.AddComponent<PsyCurio.Shop.Therapist.SessionLogger>();
+        }
+        var serialized = new SerializedObject(logger);
+        serialized.FindProperty("therapistPanel").objectReferenceValue = panel;
+        serialized.FindProperty("controller").objectReferenceValue = controller;
+        serialized.FindProperty("sudsPrompt").objectReferenceValue = sudsPrompt;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static void WireControllerCashier(ShopController controller)
