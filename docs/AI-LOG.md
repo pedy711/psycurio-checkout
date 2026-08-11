@@ -59,3 +59,26 @@ Caught before implementation by verifying the draft plan against current Unity
   credentials), which only Pedram can do; re-run the setup afterwards. Lessons:
   verify license state before the first headless run, and never report an
   aggregate shell exit code as the tool's own result.
+
+## 2026-08-11 — Step 1/2: "Packages with Errors" dialog on first interactive open
+
+- **Suggested:** creating the project by manually unpacking the Hub template
+  tgz, described as producing an "identical result to Hub's Universal 3D
+  template", then committing the manifest as "100% stock".
+  **Actual:** Unity Hub also writes `ProjectVersion.txt` at creation time; the
+  manual unpack skipped that. Opening a project with no version stamp made
+  Unity run its ancient-project migration, silently injecting legacy packages
+  (deprecated `com.unity.purchasing` IAP, `com.unity.analytics`, 2D tooling,
+  `com.unity.multiplayer.center`, `com.unity.xr.legacyinputhelpers` — the last
+  against the brief's "no XR packages"). Commit 1 shipped that manifest, and
+  the first interactive open greeted Pedram with a "Packages with Errors"
+  dialog caused by the deprecated IAP package.
+  **Caught by:** Pedram screenshotting the dialog; the editor log then showed
+  the deprecation notice, and all legacy-service flags being disabled ruled
+  out the first theory (services migration) in favour of the missing version
+  stamp.
+  **Fix:** removed the six auto-injected packages from `Packages/manifest.json`,
+  verified a clean headless re-resolve/recompile, committed as its own chore
+  fix. Lesson: after reproducing a Hub behaviour by hand, diff the result
+  against what Hub actually produces — including generated files, not just the
+  template payload.
