@@ -20,6 +20,14 @@ public static class ProjectSetupTasks
         PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
+        // The fixed camera frames a 16:9 landscape view; portrait shows a
+        // narrow slice with the shelf off-screen (found on first device run).
+        PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+        PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+        PlayerSettings.allowedAutorotateToLandscapeRight = true;
+        PlayerSettings.allowedAutorotateToPortrait = false;
+        PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+
         // Brief: Active Input Handling = "Both". No public API exists for this
         // setting; 0 = old Input Manager, 1 = Input System package, 2 = Both.
         var projectSettings = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/ProjectSettings.asset")[0];
