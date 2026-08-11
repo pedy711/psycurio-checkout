@@ -1,5 +1,6 @@
 using PsyCurio.Shop;
 using PsyCurio.Shop.Interaction;
+using PsyCurio.Shop.Ui;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -36,9 +37,157 @@ public static class SceneWiring
         WireShelfItems(controller);
         WireCashierSpeech();
         WireRegister(controller);
+        WireControllerCashier(controller);
+        EnsureEventSystem();
+        BuildScreenUi(camera, controller);
+        WireClickFeedback(camera, controller);
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
-        Debug.Log("SceneWiring: router, controller, slots, shelf items, balloon and register wired");
+        Debug.Log("SceneWiring: interactions, speech, register, UI and feedback wired");
+    }
+
+    private static void WireControllerCashier(ShopController controller)
+    {
+        var cashier = Object.FindFirstObjectByType<Cashier>();
+        if (cashier == null)
+        {
+            return;
+        }
+        var serialized = new SerializedObject(controller);
+        serialized.FindProperty("cashier").objectReferenceValue = cashier;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void EnsureEventSystem()
+    {
+        if (Object.FindFirstObjectByType<UnityEngine.EventSystems.EventSystem>() != null)
+        {
+            return;
+        }
+        var eventSystem = new GameObject("EventSystem");
+        eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
+        // Active Input Handling is "Both", so the classic module works.
+        eventSystem.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+    }
+
+    /// <summary>
+    /// Screen UI: the first-run hint (top center, fades on first interaction)
+    /// and the reset button (bottom right). Screen Space - Camera rather than
+    /// Overlay so the offscreen render requests used for verification include
+    /// it; visually identical here.
+    /// </summary>
+    private static void BuildScreenUi(Camera camera, ShopController controller)
+    {
+        var existing = GameObject.Find("ScreenUi");
+        if (existing != null)
+        {
+            Object.DestroyImmediate(existing);
+        }
+
+        var root = new GameObject("ScreenUi");
+        var canvas = root.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceCamera;
+        canvas.worldCamera = camera;
+        canvas.planeDistance = 1f;
+        canvas.sortingOrder = 20;
+        var scaler = root.AddComponent<UnityEngine.UI.CanvasScaler>();
+        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
+        root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+
+        var font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(
+            "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+
+        // First-run hint: dark pill, white text, top center.
+        var hint = new GameObject("FirstRunHint", typeof(RectTransform));
+        hint.transform.SetParent(root.transform, false);
+        var hintRect = hint.GetComponent<RectTransform>();
+        hintRect.anchorMin = new Vector2(0.5f, 1f);
+        hintRect.anchorMax = new Vector2(0.5f, 1f);
+        hintRect.pivot = new Vector2(0.5f, 1f);
+        hintRect.anchoredPosition = new Vector2(0f, -36f);
+        hintRect.sizeDelta = new Vector2(880f, 64f);
+        var hintImage = hint.AddComponent<UnityEngine.UI.Image>();
+        hintImage.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        hintImage.type = UnityEngine.UI.Image.Type.Sliced;
+        hintImage.color = new Color(0.08f, 0.09f, 0.11f, 0.72f);
+        hint.AddComponent<CanvasGroup>();
+
+        var hintTextObject = new GameObject("Text", typeof(RectTransform));
+        hintTextObject.transform.SetParent(hint.transform, false);
+        var hintTextRect = hintTextObject.GetComponent<RectTransform>();
+        hintTextRect.anchorMin = Vector2.zero;
+        hintTextRect.anchorMax = Vector2.one;
+        hintTextRect.offsetMin = Vector2.zero;
+        hintTextRect.offsetMax = Vector2.zero;
+        var hintText = hintTextObject.AddComponent<TMPro.TextMeshProUGUI>();
+        hintText.font = font;
+        hintText.fontSize = 30f;
+        hintText.color = Color.white;
+        hintText.alignment = TMPro.TextAlignmentOptions.Center;
+        hintText.text = "Click an item on the shelf to put it on the counter.";
+
+        var hintComponent = hint.AddComponent<FirstRunHint>();
+        var serializedHint = new SerializedObject(hintComponent);
+        serializedHint.FindProperty("router").objectReferenceValue = camera.GetComponent<ClickRouter>();
+        serializedHint.ApplyModifiedPropertiesWithoutUndo();
+
+        // Reset button: bottom right, quiet styling — present but not loud.
+        var button = new GameObject("ResetButton", typeof(RectTransform));
+        button.transform.SetParent(root.transform, false);
+        var buttonRect = button.GetComponent<RectTransform>();
+        buttonRect.anchorMin = new Vector2(1f, 0f);
+        buttonRect.anchorMax = new Vector2(1f, 0f);
+        buttonRect.pivot = new Vector2(1f, 0f);
+        buttonRect.anchoredPosition = new Vector2(-28f, 28f);
+        buttonRect.sizeDelta = new Vector2(210f, 56f);
+        var buttonImage = button.AddComponent<UnityEngine.UI.Image>();
+        buttonImage.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        buttonImage.type = UnityEngine.UI.Image.Type.Sliced;
+        buttonImage.color = new Color(0.16f, 0.17f, 0.19f, 0.9f);
+        var buttonComponent = button.AddComponent<UnityEngine.UI.Button>();
+        buttonComponent.targetGraphic = buttonImage;
+
+        var labelObject = new GameObject("Label", typeof(RectTransform));
+        labelObject.transform.SetParent(button.transform, false);
+        var labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        var label = labelObject.AddComponent<TMPro.TextMeshProUGUI>();
+        label.font = font;
+        label.fontSize = 26f;
+        label.color = Color.white;
+        label.alignment = TMPro.TextAlignmentOptions.Center;
+        label.text = "Reset counter";
+
+        var resetComponent = button.AddComponent<ResetButton>();
+        var serializedReset = new SerializedObject(resetComponent);
+        serializedReset.FindProperty("controller").objectReferenceValue = controller;
+        serializedReset.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    private static void WireClickFeedback(Camera camera, ShopController controller)
+    {
+        var shop = controller.gameObject;
+        var audioSource = shop.GetComponent<AudioSource>();
+        if (audioSource == null)
+        {
+            audioSource = shop.AddComponent<AudioSource>();
+        }
+        audioSource.playOnAwake = false;
+        audioSource.spatialBlend = 0f;
+
+        var feedback = shop.GetComponent<ClickFeedback>();
+        if (feedback == null)
+        {
+            feedback = shop.AddComponent<ClickFeedback>();
+        }
+        var serialized = new SerializedObject(feedback);
+        serialized.FindProperty("router").objectReferenceValue = camera.GetComponent<ClickRouter>();
+        serialized.FindProperty("controller").objectReferenceValue = controller;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>
@@ -80,7 +229,9 @@ public static class SceneWiring
         canvasRect.sizeDelta = new Vector2(640f, 60f);
         canvasRect.pivot = new Vector2(0.5f, 0f);
 
-        balloonObject.AddComponent<CanvasGroup>();
+        // Hidden in the serialized scene too, not only after runtime Awake —
+        // otherwise an empty white strip floats over her head in edit mode.
+        balloonObject.AddComponent<CanvasGroup>().alpha = 0f;
 
         var bubble = new GameObject("Bubble", typeof(RectTransform));
         bubble.transform.SetParent(balloonObject.transform, false);

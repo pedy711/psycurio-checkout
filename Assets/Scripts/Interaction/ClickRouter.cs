@@ -20,6 +20,10 @@ namespace PsyCurio.Shop.Interaction
 
         public event Action DeadClicked;
 
+        /// <summary>A click that reached an IClickable — used by the first-run
+        /// hint to fade after the first real interaction.</summary>
+        public event Action ClickDispatched;
+
         private Camera rayCamera;
         private IHoverable currentHover;
 
@@ -57,6 +61,7 @@ namespace PsyCurio.Shop.Interaction
                 if (clickable != null)
                 {
                     clickable.OnClick();
+                    ClickDispatched?.Invoke();
                 }
                 else
                 {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using PsyCurio.Shop.Domain;
 using UnityEngine;
 
@@ -8,17 +9,23 @@ namespace PsyCurio.Shop
     /// The single bridge between clicks and the domain. Owns the one Basket
     /// instance and translates its explicit results into scene changes; it
     /// holds no shop rules itself — the domain assembly decides, this class
-    /// renders the decision.
+    /// renders the decision. Also keeps the spawned counter views aligned
+    /// with basket indices so removal-by-click maps cleanly onto RemoveAt.
     /// </summary>
     public sealed class ShopController : MonoBehaviour
     {
+        public const string RefusalLine = "That's all I can carry at once.";
+
         [SerializeField] private CounterSlots counterSlots;
+        [SerializeField] private Cashier cashier;
 
         private readonly Basket basket = new Basket();
+        private readonly List<CounterItem> counterViews = new List<CounterItem>();
 
-        /// <summary>Raised when the basket refuses a sixth item; the usability
-        /// pass attaches the slot pulse and the cashier's spoken line here.</summary>
+        public event Action PlacementAccepted;
         public event Action PlacementRefused;
+        public event Action ItemRemoved;
+        public event Action ShopReset;
 
         public Basket Basket => basket;
 
@@ -27,24 +34,42 @@ namespace PsyCurio.Shop
             var result = basket.Add(definition.ToDomainItem());
             if (result.WasAccepted)
             {
-                counterSlots.Place(result.SlotIndex, definition);
+                var spawned = counterSlots.Place(result.SlotIndex, definition);
+                var view = spawned.AddComponent<CounterItem>();
+                view.Init(this);
+                counterViews.Add(view);
+                PlacementAccepted?.Invoke();
             }
             else
             {
+                // A refused sixth item must be unmissable: markers pulse, the
+                // cashier says so, and ClickFeedback adds the refusal sound.
+                counterSlots.PulseMarkers();
+                cashier.Say(RefusalLine);
                 PlacementRefused?.Invoke();
             }
         }
 
-        public void RemoveAt(int basketIndex)
+        public void Remove(CounterItem view)
         {
-            basket.RemoveAt(basketIndex);
-            counterSlots.ShiftDownFrom(basketIndex);
+            var index = counterViews.IndexOf(view);
+            if (index < 0)
+            {
+                return;
+            }
+
+            basket.RemoveAt(index);
+            counterViews.RemoveAt(index);
+            counterSlots.ShiftDownFrom(index);
+            ItemRemoved?.Invoke();
         }
 
         public void ResetShop()
         {
             basket.Clear();
+            counterViews.Clear();
             counterSlots.Clear();
+            ShopReset?.Invoke();
         }
     }
 }
