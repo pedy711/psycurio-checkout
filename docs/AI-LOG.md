@@ -1,9 +1,13 @@
 # AI Mistake Log
 
-Running log of errors made by AI tooling during this project: what the AI
-suggested, what actually happened, how it was caught, and what fixed it.
-Maintained from the first step onward; feeds the AI-usage declaration in the
-final submission. Entries are dated, newest last.
+**Declaration of AI tool usage:** this project was built pair-programming
+with Claude (Anthropic). The AI drafted code, editor tooling and
+documentation and ran the headless verification pipeline; every step was
+human-reviewed, play-tested and explicitly approved before each commit.
+Below is the candid, dated log of what the AI got wrong along the way: what
+it suggested, what actually happened, how it was caught, and what fixed it.
+Entries run oldest to newest. Its value depends on being complete rather
+than flattering — nothing that cost a cycle has been left out.
 
 ---
 
@@ -142,3 +146,32 @@ by argument:
   Awakes), and AmbientNoise initializes lazily so early calls are safe
   regardless. Lesson: cross-component initialization belongs in Start, and
   editor-side render checks do not exercise runtime lifecycle order.
+
+## 2026-08-11 — Step 11/13: two of three bystanders stood outside the camera frame
+
+- **Suggested:** queue anchor positions receding from the counter toward the
+  camera; the step-11 verification render showed "a bystander at the frame
+  edge" and was accepted.
+  **Actual:** the frustum narrows toward the camera — anchor 2 stood just
+  outside the right frame edge and anchor 3 far outside. The patient saw
+  shadows creeping into frame but not the figures; a social-presence stimulus
+  the patient cannot see. The AI's own render check had shown exactly one
+  figure and it concluded success without counting.
+  **Caught by:** Pedram setting bystanders to 3 and screenshotting a lone
+  shadow.
+  **Fix:** three attempts. The first two repositionings were derived from
+  hand-computed frustum estimates that ignored the camera's downward pitch —
+  one put a figure inside the counter, the next made a near figure loom
+  gigantically. The placement that shipped came from inverse-projecting
+  target screen positions through the actual camera onto the floor (a
+  measurement grid), which revealed the visible floor wedge is far smaller
+  than intuition suggested and only its far band renders figures at person
+  scale. Verification now projects every bystander's head to viewport
+  coordinates and asserts all three are in frame, and the APK was rebuilt so
+  the delivered build contains the fix. Along the way one automated patch
+  silently failed to apply (wrong working directory) and was only caught
+  because the re-run's numbers were identical to the previous run's —
+  subsequent runs verify the edit is present before building. Lessons: when
+  the claim is "N things are visible", the check must count to N; measure
+  through the camera instead of estimating its frustum; and a verification
+  that produces identical numbers after a change is itself a red flag.
