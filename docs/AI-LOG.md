@@ -82,3 +82,27 @@ Caught before implementation by verifying the draft plan against current Unity
   fix. Lesson: after reproducing a Hub behaviour by hand, diff the result
   against what Hub actually produces — including generated files, not just the
   template payload.
+
+## 2026-08-11 — Step 4: three wrong theories before the greybox scene had light
+
+The first framing render came out near-black. It took two wrong AI theories to
+reach the real cause; each was falsified by rendering an image rather than
+by argument:
+
+- **Theory 1 (partly wrong):** "the template's default light points away from
+  the camera-facing surfaces" — rotating the sun changed shadows (proving
+  rotation worked) but the scene stayed dark; a first rotation guess (yaw 205°)
+  even put the whole play area inside the back wall's shadow.
+- **Theory 2 (wrong):** "`Camera.Render()` is a legacy path URP doesn't support,
+  so the screenshot itself is lying." Switching to the supported
+  `RenderPipeline.SubmitRenderRequest` produced a pixel-identical image,
+  falsifying the theory. The supported API was kept anyway.
+- **Actual cause, found by an A/B diagnostic (shadows off / intensity ×5 /
+  default rotation):** with shadows disabled the scene rendered perfectly —
+  the URP assets' default ~50 m shadow distance stretched over a ~4 m room
+  degraded shadow-map precision until everything self-shadowed to black,
+  amplified by the room-sized floor/wall cubes acting as shadow casters.
+  **Fix:** shadow distance 12 m on both RP assets; floor and wall set to not
+  cast shadows (they cannot shadow anything the fixed camera sees). Lesson:
+  when a render looks wrong, bisect with A/B images instead of stacking
+  plausible API theories.
