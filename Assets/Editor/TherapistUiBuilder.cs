@@ -70,7 +70,7 @@ public static class TherapistUiBuilder
         layout.childAlignment = TextAnchor.UpperLeft;
 
         Label(panel, font, "THERAPIST CONTROLS", 30f, Accent, FontStyles.Bold, 44f);
-        Label(panel, font, "Exposure intensity — press T to close", 20f,
+        Label(panel, font, "Exposure intensity — press T or tap Therapist to close", 20f,
             new Color(0.55f, 0.58f, 0.63f), FontStyles.Normal, 26f);
         Spacer(panel, 8f);
 
@@ -117,6 +117,49 @@ public static class TherapistUiBuilder
         serialized.FindProperty("sudsButton").objectReferenceValue = sudsButton;
         serialized.FindProperty("sudsPrompt").objectReferenceValue = sudsPrompt;
         serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        BuildToggleChip(root, resources, font, panelComponent);
+    }
+
+    /// <summary>
+    /// Quiet bottom-left chip that toggles the panel — the touch-device
+    /// equivalent of the T key, styled to match the Reset chip. Wired as a
+    /// persistent listener so it serializes into the scene.
+    /// </summary>
+    private static void BuildToggleChip(GameObject canvasRoot, DefaultControls.Resources resources,
+        TMP_FontAsset font, TherapistPanel panelComponent)
+    {
+        var chip = new GameObject("TherapistToggle", typeof(RectTransform));
+        chip.transform.SetParent(canvasRoot.transform, false);
+        var chipRect = chip.GetComponent<RectTransform>();
+        chipRect.anchorMin = new Vector2(0f, 0f);
+        chipRect.anchorMax = new Vector2(0f, 0f);
+        chipRect.pivot = new Vector2(0f, 0f);
+        chipRect.anchoredPosition = new Vector2(28f, 28f);
+        chipRect.sizeDelta = new Vector2(180f, 56f);
+        var chipImage = chip.AddComponent<Image>();
+        chipImage.sprite = resources.standard;
+        chipImage.type = Image.Type.Sliced;
+        chipImage.color = new Color(0.16f, 0.17f, 0.19f, 0.9f);
+        var chipButton = chip.AddComponent<Button>();
+        chipButton.targetGraphic = chipImage;
+
+        var labelObject = new GameObject("Label", typeof(RectTransform));
+        labelObject.transform.SetParent(chip.transform, false);
+        var labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        var label = labelObject.AddComponent<TextMeshProUGUI>();
+        label.font = font;
+        label.fontSize = 26f;
+        label.color = Color.white;
+        label.alignment = TextAlignmentOptions.Center;
+        label.text = "Therapist";
+
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(
+            chipButton.onClick, panelComponent.TogglePanel);
     }
 
     private static Button BuildSudsButton(GameObject parent, DefaultControls.Resources resources,

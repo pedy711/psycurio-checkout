@@ -64,8 +64,15 @@ namespace PsyCurio.Shop.Therapist
         {
             if (Input.GetKeyDown(KeyCode.T))
             {
-                panelRoot.SetActive(!panelRoot.activeSelf);
+                TogglePanel();
             }
+        }
+
+        /// <summary>Also bound to the on-screen Therapist button — touch
+        /// devices have no T key, and the brief wants everything clickable.</summary>
+        public void TogglePanel()
+        {
+            panelRoot.SetActive(!panelRoot.activeSelf);
         }
 
         private void ApplyEyeContact(bool value)

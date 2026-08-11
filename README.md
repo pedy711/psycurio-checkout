@@ -13,11 +13,14 @@ controls and SUDS logging.
   open `Assets/Scenes/Shop.unity`, press **Play**.
 - Everything is mouse-driven: click shelf items to put them on the counter,
   click a counter item to put it back, click the cashier to be greeted, click
-  the register to hear your total. **T** toggles the therapist panel;
+  the register to hear your total. **T** or the **Therapist** button (bottom
+  left) toggles the therapist panel;
   **Reset counter** clears the purchase.
 - Android build: `Builds/psycurio-checkout.apk` (IL2CPP, ARM64, min API 25),
   or rebuild via **PsyCurio > Build Android APK**. Install with
-  `adb install psycurio-checkout.apk`; taps behave like clicks.
+  `adb install psycurio-checkout.apk`; taps behave like clicks and the app
+  locks to landscape, matching the fixed camera's framing. Verified on a
+  Galaxy S21 Ultra.
 - Tests: **Window > General > Test Runner > EditMode > Run All**
   (37 tests over the domain layer).
 
@@ -28,7 +31,9 @@ with an explicit, visibly-refused limit; Mixamo cashier with idle and
 click-triggered wave; register click makes her state the chosen items
 (duplicates grouped: "2x Coffee") and the euro total in a speech balloon.
 
-**Additional task (self-proposed):** a therapist control panel (T) with live
+**Additional task** — via the task sheet's final option ("suggest your own
+addition"), with the "Add Unit tests" option also covered in full by the 37
+EditMode domain tests: a therapist control panel (T) with live
 exposure-intensity controls — cashier eye contact, response delay, bystander
 count, ambient noise level — plus a patient-facing SUDS prompt (0–100)
 triggered from the panel. Every rating appends
