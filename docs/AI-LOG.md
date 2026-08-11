@@ -106,3 +106,24 @@ by argument:
   cast shadows (they cannot shadow anything the fixed camera sees). Lesson:
   when a render looks wrong, bisect with A/B images instead of stacking
   plausible API theories.
+
+## 2026-08-11 — Step 9: speech balloon rendered as an empty strip, three stacked causes
+
+- **Suggested:** creating the balloon's TextMeshProUGUI in an editor script and
+  relying on TMP's default font to apply, with essentials imported via
+  `AssetDatabase.ImportPackage` inside the same batch run.
+  **Actual:** three compounding failures. (1) A script-created TMP component
+  serializes `font = null` and renders no text at all — in the editor and in a
+  player build alike. (2) `ImportPackage` in a `-quit` batch run only queues
+  the import; nothing persists, so the "imported" essentials vanished between
+  runs. (3) The defensive rewrite `TMP_Settings.defaultFontAsset != null ? …`
+  still crashed, because that property's *getter* itself throws
+  NullReferenceException before TMP settings load.
+  **Caught by:** the step's screenshot verification — an empty white strip
+  where the sentence should be — then reading the editor log for the NRE.
+  **Fix:** essentials imported once via Unity's synchronous `-importPackage`
+  command-line argument; the font asset loaded directly by asset path and
+  assigned explicitly; the wiring refuses to build the balloon (with a clear
+  error) if essentials are absent. Lesson: render-verify UI built by scripts —
+  each of these three failures was invisible in code review and obvious in a
+  screenshot.
