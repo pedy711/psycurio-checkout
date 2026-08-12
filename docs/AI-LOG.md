@@ -147,6 +147,26 @@ by argument:
   regardless. Lesson: cross-component initialization belongs in Start, and
   editor-side render checks do not exercise runtime lifecycle order.
 
+## 2026-08-11 — Extension: touch input relied on mouse emulation — stuck highlights and every-other-tap misses
+
+- **Suggested:** letting Android input flow through Unity's mouse emulation
+  (`Input.mousePosition` / `GetMouseButtonDown`), as the click router did on
+  desktop.
+  **Actual:** two device-only failures. The emulated pointer keeps reporting
+  the last touch position forever, so the hover highlight froze ON after
+  every tap (a red apple stayed "orange" until the next tap elsewhere); and
+  the emulated position lags a frame on device, so tap N was processed at
+  tap N−1's position — hits landed roughly every other tap. Several items
+  were also genuinely tiny targets (the 3 cm chocolate bar at 4 m).
+  **Caught by:** Pedram play-testing on his phone and describing the exact
+  cadence ("almost every other click"), which pointed straight at the
+  stale-position mechanism.
+  **Fix:** the router reads touches directly (position from the touch,
+  click on touch-began, hover only while a finger is down — as press
+  feedback), and item prefabs carry padded box colliders guaranteeing ~10 cm
+  of tappable extent per axis. Lesson: mouse emulation is a compatibility
+  shim, not an input path — and touch targets need physical minimum sizes.
+
 ## 2026-08-11 — Step 11/13: two of three bystanders stood outside the camera frame
 
 - **Suggested:** queue anchor positions receding from the counter toward the

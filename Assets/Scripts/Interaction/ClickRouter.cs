@@ -42,7 +42,32 @@ namespace PsyCurio.Shop.Interaction
                 return;
             }
 
-            var ray = rayCamera.ScreenPointToRay(Input.mousePosition);
+            // Touch is read directly, never through mouse emulation: the
+            // emulated position lags a frame on Android (taps land where the
+            // previous tap was) and keeps "hovering" the last touch point
+            // forever, which froze highlights on. On touch, highlight acts as
+            // press feedback while a finger is down; without a finger there
+            // is no pointer, so there is no hover.
+            Vector2 pointerPosition;
+            bool clickThisFrame;
+            if (Input.touchCount > 0)
+            {
+                var touch = Input.GetTouch(0);
+                pointerPosition = touch.position;
+                clickThisFrame = touch.phase == TouchPhase.Began;
+            }
+            else if (Application.isMobilePlatform)
+            {
+                SetHover(null);
+                return;
+            }
+            else
+            {
+                pointerPosition = Input.mousePosition;
+                clickThisFrame = Input.GetMouseButtonDown(0);
+            }
+
+            var ray = rayCamera.ScreenPointToRay(pointerPosition);
             IClickable clickable = null;
             IHoverable hoverable = null;
             if (Physics.Raycast(ray, out var hit, maxRayDistance))
@@ -56,7 +81,7 @@ namespace PsyCurio.Shop.Interaction
             SetHover(clickable != null ? hoverable : null);
             InteractionCursor.ShowPointer(clickable != null);
 
-            if (Input.GetMouseButtonDown(0))
+            if (clickThisFrame)
             {
                 if (clickable != null)
                 {

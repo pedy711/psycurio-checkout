@@ -62,9 +62,60 @@ public static class ItemContentBuilder
         }
         PlaceShelfDisplays();
         BuildBystanderPrefab();
+        BuildLandingBurstPrefab();
 
         AssetDatabase.SaveAssets();
         Debug.Log("ItemContentBuilder: six items built and placed on the shelf");
+    }
+
+    /// <summary>
+    /// Soft dust puff played where a flying item lands: a dozen small, short
+    /// particles, self-destroying. Configured entirely in code.
+    /// </summary>
+    public static GameObject BuildLandingBurstPrefab()
+    {
+        const string path = "Assets/Prefabs/LandingBurst.prefab";
+        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        var root = new GameObject("LandingBurst");
+        var particles = root.AddComponent<ParticleSystem>();
+
+        var main = particles.main;
+        main.duration = 0.5f;
+        main.loop = false;
+        main.playOnAwake = true;
+        main.startLifetime = 0.35f;
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.4f, 0.9f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.02f, 0.045f);
+        main.startColor = new Color(0.92f, 0.9f, 0.85f, 0.85f);
+        main.gravityModifier = 0.35f;
+        main.stopAction = ParticleSystemStopAction.Destroy;
+
+        var emission = particles.emission;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
+
+        var shape = particles.shape;
+        shape.shapeType = ParticleSystemShapeType.Cone;
+        shape.angle = 55f;
+        shape.radius = 0.03f;
+
+        var sizeOverLifetime = particles.sizeOverLifetime;
+        sizeOverLifetime.enabled = true;
+        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f,
+            AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
+
+        var renderer = root.GetComponent<ParticleSystemRenderer>();
+        renderer.sharedMaterial = AssetDatabase.GetBuiltinExtraResource<Material>(
+            "Default-ParticleSystem.mat");
+
+        var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
+        Object.DestroyImmediate(root);
+        return prefab;
     }
 
     /// <summary>
@@ -136,6 +187,17 @@ public static class ItemContentBuilder
         temp.transform.localScale = spec.Size;
         temp.GetComponent<Renderer>().sharedMaterial = material;
         temp.AddComponent<PsyCurio.Shop.Interaction.HoverHighlight>();
+
+        // Fat-finger padding: replace the tight primitive collider with a box
+        // guaranteeing ~10 cm of tappable extent per axis — the 3 cm-deep
+        // chocolate bar was a needle to hit on a phone at 4 m camera distance.
+        const float minTapExtent = 0.10f;
+        Object.DestroyImmediate(temp.GetComponent<Collider>());
+        var tapBox = temp.AddComponent<BoxCollider>();
+        tapBox.size = new Vector3(
+            Mathf.Max(1f, minTapExtent / spec.Size.x),
+            Mathf.Max(1f, minTapExtent / spec.Size.y),
+            Mathf.Max(1f, minTapExtent / spec.Size.z));
 
         var path = $"{PrefabsFolder}/{spec.Name}.prefab";
         var prefab = PrefabUtility.SaveAsPrefabAsset(temp, path);

@@ -266,6 +266,8 @@ public static class SceneWiring
         var serialized = new SerializedObject(feedback);
         serialized.FindProperty("router").objectReferenceValue = camera.GetComponent<ClickRouter>();
         serialized.FindProperty("controller").objectReferenceValue = controller;
+        serialized.FindProperty("counterSlots").objectReferenceValue =
+            Object.FindFirstObjectByType<CounterSlots>();
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
@@ -427,6 +429,8 @@ public static class SceneWiring
         {
             array.GetArrayElementAtIndex(i).objectReferenceValue = anchors[i];
         }
+        serialized.FindProperty("landingBurstPrefab").objectReferenceValue =
+            ItemContentBuilder.BuildLandingBurstPrefab();
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return slots;
     }
