@@ -176,7 +176,7 @@ public static class GreyboxSceneBuilder
         floor.isStatic = true;
 
         var backWall = Primitive("BackWall", PrimitiveType.Cube, null,
-            new Vector3(0.5f, 1.5f, 2.45f), new Vector3(13f, 3f, 0.1f), "Wall", new Color(0.85f, 0.84f, 0.82f));
+            new Vector3(0.5f, 1.8f, 2.45f), new Vector3(13f, 3.6f, 0.1f), "Wall", new Color(0.85f, 0.84f, 0.82f));
         backWall.isStatic = true;
 
         // Neither can shadow anything the camera sees, and as casters their

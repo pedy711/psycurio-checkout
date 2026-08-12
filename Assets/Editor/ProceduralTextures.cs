@@ -90,7 +90,8 @@ public static class ProceduralTextures
                     baseColor.r * shade, baseColor.g * shade, baseColor.b * shade));
             }
         }
-        return Save(texture, name);
+        // Mirrored wrap hides the seam of non-tileable Perlin noise.
+        return Save(texture, name, TextureWrapMode.Mirror);
     }
 
     /// <summary>Dark display screen with lighter text-like rows.</summary>
@@ -126,7 +127,135 @@ public static class ProceduralTextures
         return Save(texture, name);
     }
 
+    /// <summary>Product label: base color, a horizontal band, dash rows as
+    /// abstract text. Wraps around cylinders and boxes alike.</summary>
+    public static Texture2D Label(string name, Color baseColor, Color bandColor, int seed)
+    {
+        const int size = 256;
+        var texture = new Texture2D(size, size, TextureFormat.RGB24, false);
+        var random = new System.Random(seed);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var color = baseColor;
+                if (y > size * 0.62f && y < size * 0.8f)
+                {
+                    color = bandColor;
+                }
+                texture.SetPixel(x, y, color);
+            }
+        }
+        // Abstract text: dark dash rows under the band.
+        var ink = new Color(0.15f, 0.13f, 0.12f);
+        for (var row = 0; row < 3; row++)
+        {
+            var rowY = (int)(size * 0.5f) - row * 22;
+            var x = 30;
+            while (x < size - 40)
+            {
+                var dash = 14 + random.Next(26);
+                for (var dx = 0; dx < dash && x + dx < size - 30; dx++)
+                {
+                    for (var dy = 0; dy < 8; dy++)
+                    {
+                        texture.SetPixel(x + dx, rowY + dy, ink);
+                    }
+                }
+                x += dash + 10;
+            }
+        }
+        return Save(texture, name, TextureWrapMode.Clamp);
+    }
+
+    /// <summary>Bread crust: warm noise with pale diagonal score marks.</summary>
+    public static Texture2D Crust(string name)
+    {
+        const int size = 256;
+        var texture = new Texture2D(size, size, TextureFormat.RGB24, false);
+        var baseColor = new Color(0.71f, 0.5f, 0.27f);
+        var score = new Color(0.87f, 0.74f, 0.52f);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var noise = Mathf.PerlinNoise(x * 0.08f, y * 0.08f) * 0.18f;
+                var color = new Color(
+                    baseColor.r * (0.88f + noise),
+                    baseColor.g * (0.88f + noise),
+                    baseColor.b * (0.88f + noise));
+                // Three diagonal score lines across the top half.
+                for (var line = 0; line < 3; line++)
+                {
+                    var center = size * (0.3f + line * 0.2f);
+                    if (y > size * 0.55f && Mathf.Abs(x + (y - size * 0.75f) * 0.5f - center) < 6f)
+                    {
+                        color = score;
+                    }
+                }
+                texture.SetPixel(x, y, color);
+            }
+        }
+        return Save(texture, name, TextureWrapMode.Clamp);
+    }
+
+    /// <summary>Apple skin: red with subtle vertical streaks and speckle.</summary>
+    public static Texture2D AppleSkin(string name)
+    {
+        const int size = 128;
+        var texture = new Texture2D(size, size, TextureFormat.RGB24, false);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var streak = Mathf.PerlinNoise(x * 0.3f, y * 0.05f);
+                var color = Color.Lerp(
+                    new Color(0.72f, 0.15f, 0.12f),
+                    new Color(0.85f, 0.32f, 0.14f),
+                    streak);
+                var speck = Mathf.PerlinNoise(x * 0.9f + 40f, y * 0.9f);
+                if (speck > 0.78f)
+                {
+                    color *= 1.12f;
+                }
+                texture.SetPixel(x, y, color);
+            }
+        }
+        return Save(texture, name);
+    }
+
+    /// <summary>Chocolate wrapper: colored field, foil band, segment grid.</summary>
+    public static Texture2D Wrapper(string name, Color baseColor, Color bandColor)
+    {
+        const int size = 256;
+        var texture = new Texture2D(size, size, TextureFormat.RGB24, false);
+        var groove = new Color(baseColor.r * 0.72f, baseColor.g * 0.72f, baseColor.b * 0.72f);
+        for (var y = 0; y < size; y++)
+        {
+            for (var x = 0; x < size; x++)
+            {
+                var color = baseColor;
+                if (y > size * 0.4f && y < size * 0.58f)
+                {
+                    color = bandColor;
+                }
+                else if (x % 64 < 4 || y % 64 < 4)
+                {
+                    // Segment grid like molded chocolate under the wrap.
+                    color = groove;
+                }
+                texture.SetPixel(x, y, color);
+            }
+        }
+        return Save(texture, name, TextureWrapMode.Clamp);
+    }
+
     private static Texture2D Save(Texture2D texture, string name)
+    {
+        return Save(texture, name, TextureWrapMode.Repeat);
+    }
+
+    private static Texture2D Save(Texture2D texture, string name, TextureWrapMode wrap)
     {
         if (!AssetDatabase.IsValidFolder(Folder))
         {
@@ -139,7 +268,7 @@ public static class ProceduralTextures
         AssetDatabase.ImportAsset(path);
 
         var importer = (TextureImporter)AssetImporter.GetAtPath(path);
-        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.wrapMode = wrap;
         importer.SaveAndReimport();
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }

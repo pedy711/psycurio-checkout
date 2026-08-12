@@ -138,8 +138,9 @@ public static class EnvironmentArtBuilder
         screenMaterial.SetColor("_EmissionColor", new Color(0.16f, 0.35f, 0.2f));
         screenMaterial.SetTexture("_EmissionMap", displayTexture);
         screenMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
-        SaveMaterial(screenMaterial, "RegisterScreenArt");
-        screen.GetComponent<Renderer>().sharedMaterial = screenMaterial;
+        // Assign the SAVED asset — SaveMaterial destroys the fresh instance on
+        // its reuse path, which turned the screen magenta on every re-run.
+        screen.GetComponent<Renderer>().sharedMaterial = SaveMaterial(screenMaterial, "RegisterScreenArt");
 
         var paperRoll = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         paperRoll.name = "PaperRoll";

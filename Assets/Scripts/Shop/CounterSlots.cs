@@ -30,9 +30,8 @@ namespace PsyCurio.Shop
         {
             var anchor = anchors[index];
             var item = Instantiate(definition.CounterPrefab, anchor);
-            // Primitive prefabs carry their size in localScale; rest the item
-            // on the marker instead of intersecting it.
-            var restingPosition = new Vector3(0f, definition.CounterPrefab.transform.localScale.y / 2f, 0f);
+            // Item prefabs are bottom-pivoted: local zero rests on the anchor.
+            var restingPosition = Vector3.zero;
             item.name = $"CounterItem_{definition.name}";
 
             var flight = item.AddComponent<ItemFlight>();
