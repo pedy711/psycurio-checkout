@@ -167,6 +167,26 @@ by argument:
   of tappable extent per axis. Lesson: mouse emulation is a compatibility
   shim, not an input path — and touch targets need physical minimum sizes.
 
+## 2026-08-12 — Environment builder repainted the groceries, and the AI explained away the first report
+
+- **Suggested:** EnvironmentArtBuilder dressing the shelf via
+  `GetComponentsInChildren<Renderer>()`, documented as "idempotent — safe to
+  re-run" and exposed as a menu item.
+  **Actual:** the item displays live under the shelf's anchors, so running
+  the menu item standalone painted every grocery wood-brown and saved the
+  scene. The automated pipeline always re-ran the item stage afterwards,
+  masking the bug in every scripted verification. Worse: when Pedram first
+  reported sepia items in a phone screenshot, the AI produced a plausible
+  wrong explanation (a night-mode display filter) and dismissed a correct
+  bug report — the later editor screenshot with the builder's own log line
+  visible proved the real cause.
+  **Caught by:** Pedram, twice.
+  **Fix:** the builder now paints only the shelf's direct structural
+  children; the pipeline re-run restores the scene. Lessons: a builder
+  advertised as safe-to-re-run must be verified standalone, not only inside
+  the pipeline that happens to repair its damage — and a user's bug report
+  outranks a convenient theory.
+
 ## 2026-08-12 — Art pass: a material helper that destroyed what it returned, and mis-scaled items
 
 - **Suggested:** a `SaveMaterial` helper whose reuse path copied properties

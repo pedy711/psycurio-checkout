@@ -43,10 +43,18 @@ public static class EnvironmentArtBuilder
         Assign("Floor", TexturedMaterial("FloorArt", floorTexture, new Vector2(6.5f, 4.5f), 0.1f));
         Assign("BackWall", TexturedMaterial("WallArt", wallTexture, new Vector2(5f, 1.2f), 0.02f));
 
+        // Structural parts only — GetComponentsInChildren would also repaint
+        // the item displays living under the shelf's ItemSpot anchors, which
+        // turned every grocery wood-brown when this ran standalone from the
+        // menu (see AI log).
         var shelfMaterial = TexturedMaterial("ShelfArt", shelfTexture, new Vector2(1.6f, 1.6f), 0.15f);
-        foreach (var renderer in GameObject.Find("Shelf").GetComponentsInChildren<Renderer>())
+        foreach (Transform child in GameObject.Find("Shelf").transform)
         {
-            renderer.sharedMaterial = shelfMaterial;
+            var childRenderer = child.GetComponent<Renderer>();
+            if (childRenderer != null)
+            {
+                childRenderer.sharedMaterial = shelfMaterial;
+            }
         }
 
         Assign("Counter/Top", TexturedMaterial("CounterTopArt", counterTopTexture, new Vector2(1.8f, 0.7f), 0.3f));

@@ -23,6 +23,9 @@ controls and SUDS logging.
   Galaxy S21 Ultra.
 - Tests: **Window > General > Test Runner > EditMode > Run All**
   (37 tests over the domain layer).
+- A Console warning about the deprecated Input Manager is expected: the task
+  requires Active Input Handling "Both", which keeps the legacy input path
+  alive alongside the Input System.
 
 ## What was built
 
