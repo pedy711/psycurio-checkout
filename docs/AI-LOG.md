@@ -167,6 +167,21 @@ by argument:
   of tappable extent per axis. Lesson: mouse emulation is a compatibility
   shim, not an input path — and touch targets need physical minimum sizes.
 
+## 2026-08-12 — Art pass: a material helper that destroyed what it returned, and mis-scaled items
+
+- **Suggested:** a `SaveMaterial` helper whose reuse path copied properties
+  into the existing asset and then destroyed the fresh instance — and one
+  call site assigned that destroyed instance to the register screen.
+  **Actual:** first run fine, every re-run a magenta screen (destroyed
+  material). The render-verification screenshot caught it immediately; the
+  fix is assigning the returned asset. A second art miss in the same round:
+  the modeled groceries used real-world dimensions, which read toy-sized
+  from a camera four metres away — stage presence needed a 1.35× scale-up,
+  judged from the render, not the tape measure.
+  **Caught by:** the per-stage screenshot verification both times.
+  **Lesson:** helpers that consume their arguments must be the only path to
+  the object, and art scale is a camera-relative judgement.
+
 ## 2026-08-11 — Step 11/13: two of three bystanders stood outside the camera frame
 
 - **Suggested:** queue anchor positions receding from the counter toward the

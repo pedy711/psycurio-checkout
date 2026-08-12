@@ -37,3 +37,6 @@
 # Unity crash reports
 sysinfo.txt
 crashlytics-build.properties
+
+# Performance-test package residue, regenerated on every build
+[Aa]ssets/Resources/PerformanceTestRun*
