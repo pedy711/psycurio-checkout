@@ -15,20 +15,35 @@ namespace PsyCurio.Shop
 
         [Tooltip("Slot_0..4 under Counter/SlotAnchors, assigned by scene wiring.")]
         [SerializeField] private Transform[] anchors = new Transform[0];
+        [Tooltip("Particle burst played where an item lands, assigned by scene wiring.")]
+        [SerializeField] private GameObject landingBurstPrefab;
         [SerializeField] private float pulseSeconds = 0.9f;
 
         private Coroutine activePulse;
 
+        /// <summary>Raised when a flying item touches down on its slot.</summary>
+        public event System.Action ItemLanded;
+
         public int Count => anchors.Length;
 
-        public GameObject Place(int index, ShopItemDefinition definition)
+        public GameObject Place(int index, ShopItemDefinition definition, Vector3 fromWorldPosition)
         {
             var anchor = anchors[index];
             var item = Instantiate(definition.CounterPrefab, anchor);
             // Primitive prefabs carry their size in localScale; rest the item
             // on the marker instead of intersecting it.
-            item.transform.localPosition = new Vector3(0f, definition.CounterPrefab.transform.localScale.y / 2f, 0f);
+            var restingPosition = new Vector3(0f, definition.CounterPrefab.transform.localScale.y / 2f, 0f);
             item.name = $"CounterItem_{definition.name}";
+
+            var flight = item.AddComponent<ItemFlight>();
+            flight.Begin(fromWorldPosition, restingPosition, () =>
+            {
+                if (landingBurstPrefab != null)
+                {
+                    Instantiate(landingBurstPrefab, anchor.TransformPoint(restingPosition), Quaternion.identity);
+                }
+                ItemLanded?.Invoke();
+            });
             return item;
         }
 

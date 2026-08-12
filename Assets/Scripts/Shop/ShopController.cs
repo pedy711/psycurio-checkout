@@ -29,12 +29,12 @@ namespace PsyCurio.Shop
 
         public Basket Basket => basket;
 
-        public void TryPlace(ShopItemDefinition definition)
+        public void TryPlace(ShopItemDefinition definition, Vector3 fromWorldPosition)
         {
             var result = basket.Add(definition.ToDomainItem());
             if (result.WasAccepted)
             {
-                var spawned = counterSlots.Place(result.SlotIndex, definition);
+                var spawned = counterSlots.Place(result.SlotIndex, definition, fromWorldPosition);
                 var view = spawned.AddComponent<CounterItem>();
                 view.Init(this);
                 counterViews.Add(view);

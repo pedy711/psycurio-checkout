@@ -17,9 +17,11 @@ namespace PsyCurio.Shop.Ui
 
         [SerializeField] private ClickRouter router;
         [SerializeField] private ShopController controller;
+        [SerializeField] private CounterSlots counterSlots;
 
         private AudioSource source;
-        private AudioClip placeTick;
+        private AudioClip placeWhoosh;
+        private AudioClip landThump;
         private AudioClip removeTock;
         private AudioClip refusalBuzz;
         private AudioClip deadTap;
@@ -27,7 +29,8 @@ namespace PsyCurio.Shop.Ui
         private void Awake()
         {
             source = GetComponent<AudioSource>();
-            placeTick = Tone("place-tick", 880f, 0.07f, 0.55f);
+            placeWhoosh = Whoosh("place-whoosh", 0.3f, 0.4f);
+            landThump = Tone("land-thump", 160f, 0.09f, 0.6f);
             removeTock = Tone("remove-tock", 520f, 0.08f, 0.5f);
             refusalBuzz = Buzz("refusal-buzz", 175f, 0.22f, 0.5f);
             deadTap = Tone("dead-tap", 340f, 0.05f, 0.3f);
@@ -40,6 +43,7 @@ namespace PsyCurio.Shop.Ui
             controller.ShopReset += PlayRemove;
             controller.PlacementRefused += PlayRefusal;
             router.DeadClicked += PlayDead;
+            counterSlots.ItemLanded += PlayLanded;
         }
 
         private void OnDisable()
@@ -49,11 +53,17 @@ namespace PsyCurio.Shop.Ui
             controller.ShopReset -= PlayRemove;
             controller.PlacementRefused -= PlayRefusal;
             router.DeadClicked -= PlayDead;
+            counterSlots.ItemLanded -= PlayLanded;
         }
 
         private void PlayPlace()
         {
-            source.PlayOneShot(placeTick);
+            source.PlayOneShot(placeWhoosh);
+        }
+
+        private void PlayLanded()
+        {
+            source.PlayOneShot(landThump);
         }
 
         private void PlayRemove()
@@ -75,6 +85,25 @@ namespace PsyCurio.Shop.Ui
         {
             var samples = Fill(seconds, (i, t) =>
                 Mathf.Sin(2f * Mathf.PI * frequency * t) * Mathf.Exp(-t * 30f) * volume);
+            return ToClip(name, samples);
+        }
+
+        /// <summary>Rising filtered-noise sweep — the flight sound.</summary>
+        private static AudioClip Whoosh(string name, float seconds, float volume)
+        {
+            var random = new System.Random(7);
+            var previous = 0f;
+            var samples = Fill(seconds, (i, t) =>
+            {
+                var progress = t / seconds;
+                // Noise through a one-pole low-pass whose cutoff rises with
+                // progress, enveloped to swell and release.
+                var noise = (float)random.NextDouble() * 2f - 1f;
+                var smoothing = Mathf.Lerp(0.98f, 0.6f, progress);
+                previous = previous * smoothing + noise * (1f - smoothing);
+                var envelope = Mathf.Sin(progress * Mathf.PI);
+                return previous * envelope * volume * 2.2f;
+            });
             return ToClip(name, samples);
         }
 
