@@ -55,23 +55,41 @@ public static class GreyboxSceneBuilder
     private static readonly Vector3 RegisterLocal = new Vector3(0.7f, 0f, 0.05f);
     private static readonly Vector3 CashierStanding = new Vector3(0.55f, 0f, 1.05f);
 
-    // Trails back-right toward the wall: the frustum widens with distance, so
-    // all three stay inside the fixed view (the first placement receded toward
-    // the camera and walked the second and third right out of the frame).
-    // Clear of the counter's right end (x = 1.5) and spaced so the figures
-    // separate on screen instead of stacking along the view ray.
-    // Chosen from an inverse-projection grid of the floor actually visible
-    // right of the counter (the wedge is far smaller than frustum intuition
-    // suggests): distinct screen columns, >0.5 m body separation, clear of
-    // the counter's right end.
-    // All three sit in the far depth band (z 1.3–1.8): only there do figures
-    // render person-scale from the fixed camera — nearer floor makes them
-    // loom huge, and the visible wedge allows nothing further left.
+    // Queue placement rules, learned the hard way (see AI log): stay in the
+    // far depth band (z 1.4–2.0) where figures render person-scale and the
+    // visible floor wedge right of the counter actually exists; keep distinct
+    // screen columns with a depth zig-zag so bodies never stack along the
+    // view ray; and space for Mixamo characters with shoulders and idle
+    // gestures (~0.8 m), not for slim greybox mannequins.
+    // Derived from the measured position→viewport mapping (~0.16 vp/m at
+    // this depth): screen columns ≈ 0.72 / 0.82 / 0.91, a full body-width
+    // apart, rather than metre-spaced-but-overlapping on screen.
+    // Customer side, not staff side: the line starts beside the register's
+    // right end (level with the counter, x clear of its footprint) and
+    // recedes back-right. On screen the figures overlap partially like a
+    // real queue seen from the counter — intended; only interpenetration is
+    // a defect. Facing comes from the anchors' LookAt toward the counter.
+    // X positions solved by projecting each character's head bone to its
+    // target screen column (0.835 / 0.885 / 0.935) with depths pinned to the
+    // customer side — bodies overlap like a real queue, faces never do. The
+    // idle sway displaces bodies right of their anchors, which is why these
+    // anchors sit further left than the rendered figures.
     private static readonly Vector3[] QueuePositions =
     {
-        new Vector3(1.76f, 0f, 1.76f),
-        new Vector3(2.14f, 0f, 1.34f),
-        new Vector3(2.63f, 0f, 1.76f)
+        // Two-plus-one composition (three rigid single-file adults cannot fit
+        // the fixed frame with visible gaps — measured repeatedly): anchors 0
+        // and 1 are the checkout line, close to the camera and clear of the
+        // desk-corner sightline; anchor 2 is a browsing customer at the
+        // shelf's right end, filling the empty mid-left and clearing the
+        // shelf-edge sightline. Facing per anchor: register, person ahead,
+        // and the shelf respectively.
+        new Vector3(1.62f, 0f, -0.25f),
+        new Vector3(2.3f, 0f, 0.22f),
+        // Browser front-left of the shelf, close to the camera: at
+        // (-2.3, 0.3) his silhouette projects left of the shelf's goods
+        // (ray through his right edge hits the shelf plane at x -2.46,
+        // left of the first item), so nothing is blocked.
+        new Vector3(-2.3f, 0f, 0.3f)
     };
 
     [MenuItem("PsyCurio/Rebuild Greybox Scene")]
@@ -277,12 +295,21 @@ public static class GreyboxSceneBuilder
     private static void BuildQueueAnchors()
     {
         var root = CreateEmpty("QueueAnchors", Vector3.zero, faceCamera: false);
+        var registerPoint = CounterCenter + RegisterLocal;
+        var facingTargets = new[]
+        {
+            new Vector3(registerPoint.x, 0f, registerPoint.z), // line head: the register
+            QueuePositions[0],                                  // second: person ahead
+            // Browser: profile to the camera, gaze angled toward the
+            // shelf face — sideways stance, browsing impression.
+            new Vector3(-0.6f, 0f, 1.0f)
+        };
         for (var i = 0; i < QueuePositions.Length; i++)
         {
             var anchor = new GameObject($"Queue_{i}");
             anchor.transform.SetParent(root.transform, false);
             anchor.transform.position = QueuePositions[i];
-            anchor.transform.LookAt(new Vector3(CounterCenter.x, 0f, CounterCenter.z));
+            anchor.transform.LookAt(facingTargets[i]);
         }
     }
 

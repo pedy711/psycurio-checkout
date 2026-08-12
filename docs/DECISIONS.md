@@ -92,5 +92,9 @@ particles-and-sound feedback.
   the narrator is one class, so a German sentence set is a contained change.
 - **Placement/removal animation** — items appear and vanish in one frame;
   audio carries the feedback.
-- **Distinct bystander models** — all three queue figures share one mannequin
-  prefab.
+- ~~**Distinct bystander models** — all three queue figures share one
+  mannequin prefab.~~ Resolved post-core: three distinct Mixamo characters
+  with rebuilt URP materials, a shared retargeted idle at randomized phase,
+  and measurement-solved queue positions (the anchors are placed by
+  projecting rendered body centers to screen columns, because idle poses
+  sway bodies off their anchors).

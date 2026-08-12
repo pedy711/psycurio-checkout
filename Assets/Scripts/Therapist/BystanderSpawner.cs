@@ -11,7 +11,8 @@ namespace PsyCurio.Shop.Therapist
     public sealed class BystanderSpawner : MonoBehaviour
     {
         [SerializeField] private Transform[] queueAnchors = new Transform[0];
-        [SerializeField] private GameObject bystanderPrefab;
+        [Tooltip("Character variants, cycled per queue position.")]
+        [SerializeField] private GameObject[] bystanderPrefabs = new GameObject[0];
 
         private readonly List<GameObject> spawned = new List<GameObject>();
 
@@ -24,7 +25,8 @@ namespace PsyCurio.Shop.Therapist
             while (spawned.Count < count)
             {
                 var anchor = queueAnchors[spawned.Count];
-                var bystander = Instantiate(bystanderPrefab, anchor);
+                var prefab = bystanderPrefabs[spawned.Count % bystanderPrefabs.Length];
+                var bystander = Instantiate(prefab, anchor);
                 bystander.name = $"Bystander_{spawned.Count}";
                 spawned.Add(bystander);
             }

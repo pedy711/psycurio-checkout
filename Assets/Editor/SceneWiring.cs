@@ -1,3 +1,4 @@
+using System.Linq;
 using PsyCurio.Shop;
 using PsyCurio.Shop.Interaction;
 using PsyCurio.Shop.Ui;
@@ -83,8 +84,27 @@ public static class SceneWiring
         {
             anchorArray.GetArrayElementAtIndex(i).objectReferenceValue = anchorsRoot.Find($"Queue_{i}");
         }
-        serializedSpawner.FindProperty("bystanderPrefab").objectReferenceValue =
-            ItemContentBuilder.BuildBystanderPrefab();
+        // Prefer the Mixamo character variants; the greybox mannequin remains
+        // the fallback if none have been set up yet.
+        var variantGuids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs/Bystanders" });
+        // Ascending: the slim first character heads the line nearest the
+        // camera (clearing the desk-corner sightline); the widest (The Boss)
+        // stands deepest, where the widening frustum fits his full body.
+        var variants = variantGuids
+            .Select(AssetDatabase.GUIDToAssetPath)
+            .OrderBy(path => path)
+            .Select(AssetDatabase.LoadAssetAtPath<GameObject>)
+            .ToArray();
+        if (variants.Length == 0)
+        {
+            variants = new[] { ItemContentBuilder.BuildBystanderPrefab() };
+        }
+        var prefabArray = serializedSpawner.FindProperty("bystanderPrefabs");
+        prefabArray.arraySize = variants.Length;
+        for (var v = 0; v < variants.Length; v++)
+        {
+            prefabArray.GetArrayElementAtIndex(v).objectReferenceValue = variants[v];
+        }
         serializedSpawner.ApplyModifiedPropertiesWithoutUndo();
 
         var ambientObject = GameObject.Find("AmbientNoise");
