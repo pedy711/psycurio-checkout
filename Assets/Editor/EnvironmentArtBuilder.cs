@@ -43,10 +43,8 @@ public static class EnvironmentArtBuilder
         Assign("Floor", TexturedMaterial("FloorArt", floorTexture, new Vector2(6.5f, 4.5f), 0.1f));
         Assign("BackWall", TexturedMaterial("WallArt", wallTexture, new Vector2(5f, 1.2f), 0.02f));
 
-        // Structural parts only — GetComponentsInChildren would also repaint
-        // the item displays living under the shelf's ItemSpot anchors, which
-        // turned every grocery wood-brown when this ran standalone from the
-        // menu (see AI log).
+        // Direct children only — GetComponentsInChildren would also repaint
+        // the item displays under the shelf's ItemSpot anchors.
         var shelfMaterial = TexturedMaterial("ShelfArt", shelfTexture, new Vector2(1.6f, 1.6f), 0.15f);
         foreach (Transform child in GameObject.Find("Shelf").transform)
         {
@@ -93,15 +91,13 @@ public static class EnvironmentArtBuilder
         var bodyMaterial = PlainMaterial("RegisterBodyArt", new Color(0.24f, 0.26f, 0.29f), 0.45f);
         var darkMaterial = PlainMaterial("RegisterDarkArt", new Color(0.12f, 0.13f, 0.15f), 0.3f);
 
-        // Body, keypad and screen keep their colliders — together they are the
-        // register's tap target (CashRegister lives on the parent).
         Part("Body", PrimitiveType.Cube, register.transform,
             new Vector3(0f, 0.07f, 0f), Vector3.zero, new Vector3(0.34f, 0.14f, 0.32f),
-            bodyMaterial, keepCollider: true);
+            bodyMaterial);
 
         var keypad = Part("Keypad", PrimitiveType.Cube, register.transform,
             new Vector3(0f, 0.15f, -0.06f), new Vector3(12f, 0f, 0f), new Vector3(0.3f, 0.02f, 0.16f),
-            darkMaterial, keepCollider: true);
+            darkMaterial);
 
         // Key caps: a 4x3 grid of small light cubes on the sloped plate.
         var keyMaterial = PlainMaterial("RegisterKeyArt", new Color(0.82f, 0.83f, 0.85f), 0.15f);
@@ -132,11 +128,33 @@ public static class EnvironmentArtBuilder
             });
         Part("Screen", PrimitiveType.Cube, register.transform,
             new Vector3(0f, 0.31f, 0.11f), new Vector3(-14f, 180f, 0f), new Vector3(0.26f, 0.17f, 0.02f),
-            screenMaterial, keepCollider: true);
+            screenMaterial);
 
         Part("PaperRoll", PrimitiveType.Cylinder, register.transform,
             new Vector3(-0.1f, 0.16f, 0.1f), new Vector3(0f, 0f, 90f), new Vector3(0.05f, 0.06f, 0.05f),
             PlainMaterial("PaperArt", new Color(0.94f, 0.93f, 0.9f), 0.05f));
+
+        // One padded tap box over the whole model instead of per-part
+        // colliders: those leave dead gaps inside the register's visual
+        // silhouette (a tap between monitor and drawer must still count —
+        // found by driven touch testing on device).
+        var modelBounds = new Bounds(register.transform.position, Vector3.zero);
+        foreach (var partRenderer in register.GetComponentsInChildren<Renderer>())
+        {
+            modelBounds.Encapsulate(partRenderer.bounds);
+        }
+        const float tapPadScale = 1.2f;
+        const float minTapExtent = 0.135f;
+        var tapBox = register.GetComponent<BoxCollider>();
+        if (tapBox == null)
+        {
+            tapBox = register.AddComponent<BoxCollider>();
+        }
+        tapBox.center = register.transform.InverseTransformPoint(modelBounds.center);
+        tapBox.size = new Vector3(
+            Mathf.Max(modelBounds.size.x * tapPadScale, minTapExtent),
+            Mathf.Max(modelBounds.size.y * tapPadScale, minTapExtent),
+            Mathf.Max(modelBounds.size.z * tapPadScale, minTapExtent));
     }
 
     private static GameObject Part(string name, PrimitiveType type, Transform parent,

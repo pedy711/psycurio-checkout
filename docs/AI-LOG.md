@@ -260,3 +260,19 @@ by argument:
   Lesson: a static render verifies geometry, not interaction; affordances
   need their own checks, and "it worked when we tested it" only covers the
   states that were actually staged.
+
+## 2026-08-13 — Device test after the cleanup pass: the register had a dead zone inside its own silhouette
+
+- **Suggested:** the art-pass register kept per-part colliders (body,
+  keypad, screen) as its tap target, and every earlier test happened to hit
+  a part. **Actual:** the stand between the monitor and the drawer carries
+  no collider, so a tap visually "on the register" could dead-click — the
+  AI's own driven device test aimed at the register's center and missed
+  twice before finding a part. A miss zone inside a clickable object's
+  silhouette breaks the project's no-dead-clicks criterion exactly where
+  phone taps are least precise. **Caught by:** replaying taps over adb and
+  reading the framebuffer back — not by a human, and not by any render,
+  which cannot show colliders. **Fix:** one padded whole-model tap box on
+  the register root (the groceries' pattern), verified by re-tapping the
+  exact previously dead coordinate and getting the narration balloon.
+  Lesson: tap targets are invisible; only input-driven tests see them.
