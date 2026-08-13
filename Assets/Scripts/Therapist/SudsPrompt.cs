@@ -20,8 +20,6 @@ namespace PsyCurio.Shop.Therapist
 
         public event Action<int> Confirmed;
 
-        public bool IsOpen => promptRoot.activeSelf;
-
         private void Start()
         {
             slider.onValueChanged.AddListener(value =>

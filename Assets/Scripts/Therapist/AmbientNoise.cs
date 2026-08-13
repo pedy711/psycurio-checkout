@@ -1,3 +1,4 @@
+using PsyCurio.Shop.Audio;
 using UnityEngine;
 
 namespace PsyCurio.Shop.Therapist
@@ -10,7 +11,7 @@ namespace PsyCurio.Shop.Therapist
     [RequireComponent(typeof(AudioSource))]
     public sealed class AmbientNoise : MonoBehaviour
     {
-        private const int SampleRate = 44100;
+        private const int SampleRate = ProceduralAudio.SampleRate;
         private const float LoopSeconds = 3.2f;
         private const float SeamCrossfadeSeconds = 0.25f;
 
@@ -82,11 +83,9 @@ namespace PsyCurio.Shop.Therapist
                 samples[i] = samples[i] * blend + samples[total - seam + i] * (1f - blend);
             }
 
-            var clip = AudioClip.Create("ambient-brown-noise", total - seam, 1, SampleRate, false);
             var trimmed = new float[total - seam];
             System.Array.Copy(samples, trimmed, total - seam);
-            clip.SetData(trimmed, 0);
-            return clip;
+            return ProceduralAudio.FromSamples("ambient-brown-noise", trimmed);
         }
     }
 }

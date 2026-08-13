@@ -22,16 +22,17 @@ namespace PsyCurio.Shop
 
         private IEnumerator Fly(Vector3 fromWorld, Vector3 toLocal, Action onLanded)
         {
-            var parent = transform.parent;
-            var fromLocal = parent.InverseTransformPoint(fromWorld);
-
             for (var t = 0f; t < FlightSeconds; t += Time.deltaTime)
             {
                 var progress = Mathf.SmoothStep(0f, 1f, t / FlightSeconds);
-                var position = Vector3.Lerp(fromLocal, toLocal, progress);
+                // The target chases the *current* parent every frame: when a
+                // removal shifts this still-flying item to a lower slot, the
+                // arc bends toward the new anchor instead of teleporting.
+                var targetWorld = transform.parent.TransformPoint(toLocal);
+                var position = Vector3.Lerp(fromWorld, targetWorld, progress);
                 // Parabolic lift on top of the straight path; zero at both ends.
                 position.y += ArcHeight * 4f * progress * (1f - progress);
-                transform.localPosition = position;
+                transform.position = position;
                 yield return null;
             }
 

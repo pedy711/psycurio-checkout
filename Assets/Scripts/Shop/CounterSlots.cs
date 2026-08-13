@@ -39,7 +39,10 @@ namespace PsyCurio.Shop
             {
                 if (landingBurstPrefab != null)
                 {
-                    Instantiate(landingBurstPrefab, anchor.TransformPoint(restingPosition), Quaternion.identity);
+                    // The item's own position, not the spawn-time anchor: a
+                    // mid-flight shift-down may have retargeted it to a
+                    // different slot by the time it lands.
+                    Instantiate(landingBurstPrefab, item.transform.position, Quaternion.identity);
                 }
                 ItemLanded?.Invoke();
             });
@@ -59,24 +62,31 @@ namespace PsyCurio.Shop
 
         private IEnumerator PulseRoutine()
         {
+            // Markers and their resting colors are loop-invariant — resolve
+            // them once, not per anchor per frame.
             var block = new MaterialPropertyBlock();
+            var markers = new (Renderer renderer, Color baseColor)[anchors.Length];
+            for (var i = 0; i < anchors.Length; i++)
+            {
+                var renderer = anchors[i].GetChild(0).GetComponent<Renderer>();
+                markers[i] = (renderer, renderer.sharedMaterial.GetColor(BaseColorId));
+            }
+
             for (var t = 0f; t < pulseSeconds; t += Time.deltaTime)
             {
                 // Two full sine pulses over the duration.
                 var strength = Mathf.Abs(Mathf.Sin(t / pulseSeconds * Mathf.PI * 2f));
-                foreach (var anchor in anchors)
+                foreach (var (renderer, baseColor) in markers)
                 {
-                    var marker = anchor.GetChild(0).GetComponent<Renderer>();
-                    block.SetColor(BaseColorId, Color.Lerp(
-                        marker.sharedMaterial.GetColor(BaseColorId), PulseColor, strength));
-                    marker.SetPropertyBlock(block);
+                    block.SetColor(BaseColorId, Color.Lerp(baseColor, PulseColor, strength));
+                    renderer.SetPropertyBlock(block);
                 }
                 yield return null;
             }
 
-            foreach (var anchor in anchors)
+            foreach (var (renderer, _) in markers)
             {
-                anchor.GetChild(0).GetComponent<Renderer>().SetPropertyBlock(null);
+                renderer.SetPropertyBlock(null);
             }
             activePulse = null;
         }

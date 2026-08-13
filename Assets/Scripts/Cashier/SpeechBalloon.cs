@@ -14,23 +14,33 @@ namespace PsyCurio.Shop
     public sealed class SpeechBalloon : MonoBehaviour
     {
         [SerializeField] private TextMeshProUGUI messageText;
+        [Tooltip("The fixed scene camera; assigned by scene wiring.")]
+        [SerializeField] private Camera viewCamera;
         [SerializeField] private float fadeSeconds = 0.15f;
         [SerializeField] private float minimumShowSeconds = 2.5f;
         [SerializeField] private float perCharacterSeconds = 0.05f;
 
         private CanvasGroup canvasGroup;
-        private Camera viewCamera;
         private Coroutine activeShow;
 
         private void Awake()
         {
             canvasGroup = GetComponent<CanvasGroup>();
-            viewCamera = Camera.main;
+            if (viewCamera == null)
+            {
+                viewCamera = Camera.main;
+            }
             canvasGroup.alpha = 0f;
         }
 
         private void LateUpdate()
         {
+            // Invisible most of the session — skip the billboard work then.
+            if (canvasGroup.alpha <= 0f && activeShow == null)
+            {
+                return;
+            }
+
             // Away from the camera position: world-space UI reads correctly
             // when its forward axis points away from the viewer.
             transform.rotation = Quaternion.LookRotation(transform.position - viewCamera.transform.position);
@@ -43,6 +53,22 @@ namespace PsyCurio.Shop
                 StopCoroutine(activeShow);
             }
             activeShow = StartCoroutine(ShowRoutine(message));
+        }
+
+        /// <summary>Fades out immediately, cancelling a running show.</summary>
+        public void Hide()
+        {
+            if (activeShow != null)
+            {
+                StopCoroutine(activeShow);
+            }
+            activeShow = StartCoroutine(HideRoutine());
+        }
+
+        private IEnumerator HideRoutine()
+        {
+            yield return Fade(canvasGroup.alpha, 0f);
+            activeShow = null;
         }
 
         private IEnumerator ShowRoutine(string message)

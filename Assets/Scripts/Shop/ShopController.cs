@@ -20,6 +20,7 @@ namespace PsyCurio.Shop
         [SerializeField] private Cashier cashier;
 
         private readonly Basket basket = new Basket();
+        private readonly PurchaseNarrator narrator = new PurchaseNarrator();
         private readonly List<CounterItem> counterViews = new List<CounterItem>();
 
         public event Action PlacementAccepted;
@@ -31,6 +32,23 @@ namespace PsyCurio.Shop
 
         public void TryPlace(ShopItemDefinition definition, Vector3 fromWorldPosition)
         {
+            // Refuse before touching the domain: a basket entry without a
+            // matching view would desync removal-by-index for the rest of the
+            // session. Loud, because a failure here is always a wiring or
+            // content-authoring error.
+            if (counterSlots == null || counterSlots.Count < Basket.Capacity)
+            {
+                Debug.LogError("ShopController: counter slots missing or fewer than "
+                    + $"Basket.Capacity ({Basket.Capacity}) — placement disabled.", this);
+                return;
+            }
+            if (definition == null || definition.CounterPrefab == null)
+            {
+                var definitionName = definition == null ? "<null>" : definition.name;
+                Debug.LogError($"ShopController: item definition '{definitionName}' has no counter prefab — cannot place.", this);
+                return;
+            }
+
             var result = basket.Add(definition.ToDomainItem());
             if (result.WasAccepted)
             {
@@ -45,9 +63,17 @@ namespace PsyCurio.Shop
                 // A refused sixth item must be unmissable: markers pulse, the
                 // cashier says so, and ClickFeedback adds the refusal sound.
                 counterSlots.PulseMarkers();
-                cashier.Say(RefusalLine);
+                SayThroughCashier(RefusalLine);
                 PlacementRefused?.Invoke();
             }
+        }
+
+        /// <summary>Register click: the cashier states the chosen items and
+        /// the total. Lives here, not on the register, so domain access stays
+        /// behind this single bridge.</summary>
+        public void NarratePurchase()
+        {
+            SayThroughCashier(narrator.Narrate(basket));
         }
 
         public void Remove(CounterItem view)
@@ -55,6 +81,7 @@ namespace PsyCurio.Shop
             var index = counterViews.IndexOf(view);
             if (index < 0)
             {
+                Debug.LogWarning($"ShopController: '{view.name}' is not a tracked counter item — ignoring.", view);
                 return;
             }
 
@@ -69,7 +96,24 @@ namespace PsyCurio.Shop
             basket.Clear();
             counterViews.Clear();
             counterSlots.Clear();
+            if (cashier != null)
+            {
+                // A delay-pending line must not play over the cleared counter.
+                cashier.Silence();
+            }
             ShopReset?.Invoke();
+        }
+
+        private void SayThroughCashier(string line)
+        {
+            if (cashier != null)
+            {
+                cashier.Say(line);
+            }
+            else
+            {
+                Debug.LogError($"ShopController: cashier not wired — cannot say '{line}'.", this);
+            }
         }
     }
 }

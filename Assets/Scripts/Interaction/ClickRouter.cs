@@ -26,6 +26,9 @@ namespace PsyCurio.Shop.Interaction
 
         private Camera rayCamera;
         private IHoverable currentHover;
+        private Collider lastHitCollider;
+        private IClickable lastClickable;
+        private IHoverable lastHoverable;
 
         private void Awake()
         {
@@ -37,8 +40,10 @@ namespace PsyCurio.Shop.Interaction
             if (IsPointerOverUi())
             {
                 // The panel and prompts own the pointer; scene hover ends and
-                // scene clicks must not leak through UI.
+                // scene clicks must not leak through UI. The cursor resets too
+                // — a scene-clickable pointer over UI would be a lie.
                 SetHover(null);
+                InteractionCursor.ShowPointer(false);
                 return;
             }
 
@@ -72,8 +77,22 @@ namespace PsyCurio.Shop.Interaction
             IHoverable hoverable = null;
             if (Physics.Raycast(ray, out var hit, maxRayDistance))
             {
-                clickable = hit.collider.GetComponentInParent<IClickable>();
-                hoverable = hit.collider.GetComponentInParent<IHoverable>();
+                // The parent walks are cached per collider: the pointer rests
+                // on the same object for hundreds of consecutive frames.
+                if (!ReferenceEquals(hit.collider, lastHitCollider))
+                {
+                    lastHitCollider = hit.collider;
+                    lastClickable = hit.collider.GetComponentInParent<IClickable>();
+                    lastHoverable = hit.collider.GetComponentInParent<IHoverable>();
+                }
+                clickable = lastClickable;
+                hoverable = lastHoverable;
+            }
+            else
+            {
+                lastHitCollider = null;
+                lastClickable = null;
+                lastHoverable = null;
             }
 
             // Hover affordance strictly follows clickability: an object that
@@ -103,6 +122,14 @@ namespace PsyCurio.Shop.Interaction
 
         private void SetHover(IHoverable next)
         {
+            // Interface-typed fields bypass UnityEngine.Object's overloaded
+            // null: a hovered item destroyed by removal would otherwise be
+            // treated as alive and receive OnHoverExit after death.
+            if (currentHover is UnityEngine.Object hoverObject && hoverObject == null)
+            {
+                currentHover = null;
+            }
+
             if (ReferenceEquals(currentHover, next))
             {
                 return;

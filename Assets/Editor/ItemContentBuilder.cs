@@ -82,13 +82,19 @@ public static class ItemContentBuilder
         {
             bounds.Encapsulate(renderer.bounds);
         }
-        const float minTapExtent = 0.10f;
+        // Tap padding: the effective (world) box extends ~35% beyond the
+        // visual bounds with a per-axis floor — sizes validated by touch on
+        // an S21 Ultra. Renderer bounds are world-space while
+        // BoxCollider.center/size are local, so both divide by the root scale.
+        const float tapPadScale = 1.35f;
+        const float minTapExtent = 0.135f;
+        var rootScale = root.transform.localScale.x;
         var tapBox = root.AddComponent<BoxCollider>();
-        tapBox.center = bounds.center;
+        tapBox.center = bounds.center / rootScale;
         tapBox.size = new Vector3(
-            Mathf.Max(bounds.size.x, minTapExtent),
-            Mathf.Max(bounds.size.y, minTapExtent),
-            Mathf.Max(bounds.size.z, minTapExtent));
+            Mathf.Max(bounds.size.x * tapPadScale, minTapExtent),
+            Mathf.Max(bounds.size.y * tapPadScale, minTapExtent),
+            Mathf.Max(bounds.size.z * tapPadScale, minTapExtent)) / rootScale;
 
         var path = $"{PrefabsFolder}/{spec.Name}.prefab";
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -289,6 +295,12 @@ public static class ItemContentBuilder
             display.transform.localPosition = Vector3.zero;
         }
 
+        if (Object.FindFirstObjectByType<ShopController>() != null)
+        {
+            Debug.LogWarning("ItemContentBuilder: shelf displays were rebuilt without their "
+                + "ShelfItem wiring — run PsyCurio > Wire Scene Interactions to restore clickability.");
+        }
+
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
     }
 
@@ -299,12 +311,11 @@ public static class ItemContentBuilder
     /// </summary>
     public static GameObject BuildBystanderPrefab()
     {
+        // Always rebuilt: a get-or-skip guard would pin the asset to whatever
+        // version of this code first created it. SaveAsPrefabAsset overwrites
+        // in place, so the GUID and every scene reference survive.
         const string path = "Assets/Prefabs/Bystander.prefab";
-        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        if (existing != null)
-        {
-            return existing;
-        }
+        EditorAssets.EnsureFolder("Assets/Prefabs");
 
         var material = ItemMaterial("Bystander", new Color(0.47f, 0.51f, 0.58f), 0.2f);
 
@@ -336,12 +347,9 @@ public static class ItemContentBuilder
     /// </summary>
     public static GameObject BuildLandingBurstPrefab()
     {
+        // Always rebuilt, same reasoning as BuildBystanderPrefab.
         const string path = "Assets/Prefabs/LandingBurst.prefab";
-        var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-        if (existing != null)
-        {
-            return existing;
-        }
+        EditorAssets.EnsureFolder("Assets/Prefabs");
 
         var root = new GameObject("LandingBurst");
         var particles = root.AddComponent<ParticleSystem>();
@@ -372,8 +380,27 @@ public static class ItemContentBuilder
             AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
 
         var renderer = root.GetComponent<ParticleSystemRenderer>();
-        renderer.sharedMaterial = AssetDatabase.GetBuiltinExtraResource<Material>(
-            "Default-ParticleSystem.mat");
+        // Not the built-in Default-ParticleSystem.mat: its 'Particles/Standard
+        // Unlit' shader belongs to the built-in pipeline and renders magenta
+        // under URP. A URP particle material around the same soft-circle
+        // sprite, saved as an asset so the prefab reference survives.
+        renderer.sharedMaterial = EditorAssets.GetOrCreateMaterial(
+            "Assets/Materials/LandingBurst.mat",
+            "Universal Render Pipeline/Particles/Unlit",
+            material =>
+            {
+                material.SetTexture("_BaseMap",
+                    AssetDatabase.GetBuiltinExtraResource<Texture2D>("Default-Particle.psd"));
+                material.SetColor("_BaseColor", Color.white);
+                material.SetFloat("_Surface", 1f); // transparent
+                material.SetFloat("_Blend", 0f);   // alpha blend
+                material.SetOverrideTag("RenderType", "Transparent");
+                material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                material.SetFloat("_ZWrite", 0f);
+                material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                material.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            });
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
         Object.DestroyImmediate(root);
@@ -383,40 +410,21 @@ public static class ItemContentBuilder
     private static Material ItemMaterial(string name, Color color, float smoothness,
         Texture2D texture = null)
     {
-        var path = $"{MaterialsFolder}/{name}.mat";
-        var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (material == null)
+        return EditorAssets.GetOrCreateUrpLit($"{MaterialsFolder}/{name}.mat", material =>
         {
-            material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-            AssetDatabase.CreateAsset(material, path);
-        }
-        material.SetColor("_BaseColor", color);
-        material.SetFloat("_Smoothness", smoothness);
-        if (texture != null)
-        {
-            material.SetTexture("_BaseMap", texture);
-        }
-        EditorUtility.SetDirty(material);
-        return material;
+            material.SetColor("_BaseColor", color);
+            material.SetFloat("_Smoothness", smoothness);
+            if (texture != null)
+            {
+                material.SetTexture("_BaseMap", texture);
+            }
+        });
     }
 
     private static void EnsureFolders()
     {
-        if (!AssetDatabase.IsValidFolder(ItemsFolder))
-        {
-            AssetDatabase.CreateFolder("Assets", "Items");
-        }
-        if (!AssetDatabase.IsValidFolder("Assets/Prefabs"))
-        {
-            AssetDatabase.CreateFolder("Assets", "Prefabs");
-        }
-        if (!AssetDatabase.IsValidFolder(PrefabsFolder))
-        {
-            AssetDatabase.CreateFolder("Assets/Prefabs", "Items");
-        }
-        if (!AssetDatabase.IsValidFolder(MaterialsFolder))
-        {
-            AssetDatabase.CreateFolder("Assets/Materials", "Items");
-        }
+        EditorAssets.EnsureFolder(ItemsFolder);
+        EditorAssets.EnsureFolder(PrefabsFolder);
+        EditorAssets.EnsureFolder(MaterialsFolder);
     }
 }

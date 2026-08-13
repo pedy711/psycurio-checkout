@@ -1,3 +1,4 @@
+using PsyCurio.Shop.Audio;
 using PsyCurio.Shop.Interaction;
 using UnityEngine;
 
@@ -13,8 +14,6 @@ namespace PsyCurio.Shop.Ui
     [RequireComponent(typeof(AudioSource))]
     public sealed class ClickFeedback : MonoBehaviour
     {
-        private const int SampleRate = 44100;
-
         [SerializeField] private ClickRouter router;
         [SerializeField] private ShopController controller;
         [SerializeField] private CounterSlots counterSlots;
@@ -83,9 +82,9 @@ namespace PsyCurio.Shop.Ui
 
         private static AudioClip Tone(string name, float frequency, float seconds, float volume)
         {
-            var samples = Fill(seconds, (i, t) =>
+            var samples = ProceduralAudio.Fill(seconds, t =>
                 Mathf.Sin(2f * Mathf.PI * frequency * t) * Mathf.Exp(-t * 30f) * volume);
-            return ToClip(name, samples);
+            return ProceduralAudio.FromSamples(name, samples);
         }
 
         /// <summary>Rising filtered-noise sweep — the flight sound.</summary>
@@ -93,7 +92,7 @@ namespace PsyCurio.Shop.Ui
         {
             var random = new System.Random(7);
             var previous = 0f;
-            var samples = Fill(seconds, (i, t) =>
+            var samples = ProceduralAudio.Fill(seconds, t =>
             {
                 var progress = t / seconds;
                 // Noise through a one-pole low-pass whose cutoff rises with
@@ -104,37 +103,18 @@ namespace PsyCurio.Shop.Ui
                 var envelope = Mathf.Sin(progress * Mathf.PI);
                 return previous * envelope * volume * 2.2f;
             });
-            return ToClip(name, samples);
+            return ProceduralAudio.FromSamples(name, samples);
         }
 
         private static AudioClip Buzz(string name, float frequency, float seconds, float volume)
         {
-            var samples = Fill(seconds, (i, t) =>
+            var samples = ProceduralAudio.Fill(seconds, t =>
             {
                 var wave = Mathf.Sin(2f * Mathf.PI * frequency * t)
                            + 0.4f * Mathf.Sin(2f * Mathf.PI * frequency * 2.02f * t);
                 return Mathf.Clamp(wave, -0.7f, 0.7f) * Mathf.Exp(-t * 9f) * volume;
             });
-            return ToClip(name, samples);
-        }
-
-        private static float[] Fill(float seconds, System.Func<int, float, float> generator)
-        {
-            var samples = new float[(int)(SampleRate * seconds)];
-            for (var i = 0; i < samples.Length; i++)
-            {
-                samples[i] = generator(i, i / (float)SampleRate);
-            }
-            return samples;
-        }
-
-        private static AudioClip ToClip(string name, float[] samples)
-        {
-            // Non-streaming clip with data set once: AOT-safe on IL2CPP, no
-            // callback timing risk on device.
-            var clip = AudioClip.Create(name, samples.Length, 1, SampleRate, false);
-            clip.SetData(samples, 0);
-            return clip;
+            return ProceduralAudio.FromSamples(name, samples);
         }
     }
 }

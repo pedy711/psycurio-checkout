@@ -230,3 +230,33 @@ by argument:
   the claim is "N things are visible", the check must count to N; measure
   through the camera instead of estimating its frustum; and a verification
   that produces identical numbers after a change is itself a red flag.
+
+## 2026-08-13 — Post-completion review: the art pass had silently disabled the hover highlight
+
+- **Suggested:** the step-12 art pass gave every modeled grocery a textured
+  URP material with a white base color, and the AI verified the pass by
+  rendering the scene — which looked right, because a static render cannot
+  hover. **Actual:** `HoverHighlight` brightens by lerping the base color
+  toward white; white lerped toward white is white, so the core "clickable
+  things highlight" affordance had quietly stopped working on every textured
+  item, and nobody — AI or human — noticed for two days. A systematic
+  multi-angle review (ten independent reviewer passes over every runtime and
+  editor file, each finding adversarially verified) caught it, along with 45
+  other confirmed findings the AI had shipped as "verified": item tap
+  colliders double-scaled by assigning world-space bounds to local collider
+  fields (the padding that made phone taps feel good was an accident of this
+  bug), the landing burst using a built-in-pipeline particle shader that URP
+  renders magenta, a wave-animation race that queues a phantom second wave,
+  Reset not cancelling a delay-pending spoken total, culture-sensitive
+  timestamps in the clinical session log, and a menu build that killed the
+  whole editor on failure. **Caught by:** the review Pedram requested —
+  none of it by play-testing, because each bug hid behind "looks fine in a
+  render" or "only fires in a state nobody staged". **Fix:** hover now tints
+  toward a warm highlight color that differs from white by construction;
+  collider math converts to local space explicitly with the device-validated
+  padding made an intentional constant; and the builder helpers were unified
+  so get-or-create always re-applies configuration — the create-only variant
+  meant editing a constant and re-running silently kept the old asset.
+  Lesson: a static render verifies geometry, not interaction; affordances
+  need their own checks, and "it worked when we tested it" only covers the
+  states that were actually staged.

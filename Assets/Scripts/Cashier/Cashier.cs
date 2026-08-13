@@ -37,14 +37,35 @@ namespace PsyCurio.Shop
 
         public void OnClick()
         {
-            var state = animator.GetCurrentAnimatorStateInfo(0);
-            if (state.IsName(WaveStateName))
+            // During the Idle->Wave crossfade the *current* state still reads
+            // Idle; only the next-state info sees the wave. Without that check
+            // a click in the crossfade window would latch the trigger and
+            // replay a whole unprompted wave after this one ends.
+            var waving = animator.GetCurrentAnimatorStateInfo(0).IsName(WaveStateName)
+                || (animator.IsInTransition(0)
+                    && animator.GetNextAnimatorStateInfo(0).IsName(WaveStateName));
+            if (waving)
             {
                 animator.Play(WaveStateName, 0, 0f);
             }
             else
             {
                 animator.SetTrigger(WaveTrigger);
+            }
+        }
+
+        /// <summary>Cancels a delay-pending line and hides the balloon. Reset
+        /// must not let a stale total play over an already-cleared counter.</summary>
+        public void Silence()
+        {
+            if (pendingSpeech != null)
+            {
+                StopCoroutine(pendingSpeech);
+                pendingSpeech = null;
+            }
+            if (balloon != null)
+            {
+                balloon.Hide();
             }
         }
 

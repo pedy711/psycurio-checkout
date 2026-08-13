@@ -93,20 +93,15 @@ public static class EnvironmentArtBuilder
         var bodyMaterial = PlainMaterial("RegisterBodyArt", new Color(0.24f, 0.26f, 0.29f), 0.45f);
         var darkMaterial = PlainMaterial("RegisterDarkArt", new Color(0.12f, 0.13f, 0.15f), 0.3f);
 
-        var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        body.name = "Body";
-        body.transform.SetParent(register.transform, false);
-        body.transform.localPosition = new Vector3(0f, 0.07f, 0f);
-        body.transform.localScale = new Vector3(0.34f, 0.14f, 0.32f);
-        body.GetComponent<Renderer>().sharedMaterial = bodyMaterial;
+        // Body, keypad and screen keep their colliders — together they are the
+        // register's tap target (CashRegister lives on the parent).
+        Part("Body", PrimitiveType.Cube, register.transform,
+            new Vector3(0f, 0.07f, 0f), Vector3.zero, new Vector3(0.34f, 0.14f, 0.32f),
+            bodyMaterial, keepCollider: true);
 
-        var keypad = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        keypad.name = "Keypad";
-        keypad.transform.SetParent(register.transform, false);
-        keypad.transform.localPosition = new Vector3(0f, 0.15f, -0.06f);
-        keypad.transform.localRotation = Quaternion.Euler(12f, 0f, 0f);
-        keypad.transform.localScale = new Vector3(0.3f, 0.02f, 0.16f);
-        keypad.GetComponent<Renderer>().sharedMaterial = darkMaterial;
+        var keypad = Part("Keypad", PrimitiveType.Cube, register.transform,
+            new Vector3(0f, 0.15f, -0.06f), new Vector3(12f, 0f, 0f), new Vector3(0.3f, 0.02f, 0.16f),
+            darkMaterial, keepCollider: true);
 
         // Key caps: a 4x3 grid of small light cubes on the sloped plate.
         var keyMaterial = PlainMaterial("RegisterKeyArt", new Color(0.82f, 0.83f, 0.85f), 0.15f);
@@ -114,51 +109,52 @@ public static class EnvironmentArtBuilder
         {
             for (var column = 0; column < 4; column++)
             {
-                var key = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                key.name = $"Key_{row}{column}";
-                key.transform.SetParent(keypad.transform, false);
-                key.transform.localPosition = new Vector3(-0.3f + column * 0.2f, 0.8f, -0.28f + row * 0.28f);
-                key.transform.localScale = new Vector3(0.14f, 0.9f, 0.2f);
-                key.GetComponent<Renderer>().sharedMaterial = keyMaterial;
-                Object.DestroyImmediate(key.GetComponent<Collider>());
+                Part($"Key_{row}{column}", PrimitiveType.Cube, keypad.transform,
+                    new Vector3(-0.3f + column * 0.2f, 0.8f, -0.28f + row * 0.28f),
+                    Vector3.zero, new Vector3(0.14f, 0.9f, 0.2f), keyMaterial);
             }
         }
 
-        var stand = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        stand.name = "Stand";
-        stand.transform.SetParent(register.transform, false);
-        stand.transform.localPosition = new Vector3(0f, 0.2f, 0.1f);
-        stand.transform.localScale = new Vector3(0.05f, 0.14f, 0.03f);
-        stand.GetComponent<Renderer>().sharedMaterial = darkMaterial;
-        Object.DestroyImmediate(stand.GetComponent<Collider>());
+        Part("Stand", PrimitiveType.Cube, register.transform,
+            new Vector3(0f, 0.2f, 0.1f), Vector3.zero, new Vector3(0.05f, 0.14f, 0.03f),
+            darkMaterial);
 
-        var screen = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        screen.name = "Screen";
-        screen.transform.SetParent(register.transform, false);
-        screen.transform.localPosition = new Vector3(0f, 0.31f, 0.11f);
-        screen.transform.localRotation = Quaternion.Euler(-14f, 180f, 0f);
-        screen.transform.localScale = new Vector3(0.26f, 0.17f, 0.02f);
-        var screenMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         var displayTexture = ProceduralTextures.Display("register-display", 128, 96);
-        screenMaterial.SetTexture("_BaseMap", displayTexture);
-        screenMaterial.SetColor("_BaseColor", Color.white);
-        screenMaterial.EnableKeyword("_EMISSION");
-        screenMaterial.SetColor("_EmissionColor", new Color(0.16f, 0.35f, 0.2f));
-        screenMaterial.SetTexture("_EmissionMap", displayTexture);
-        screenMaterial.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
-        // Assign the SAVED asset — SaveMaterial destroys the fresh instance on
-        // its reuse path, which turned the screen magenta on every re-run.
-        screen.GetComponent<Renderer>().sharedMaterial = SaveMaterial(screenMaterial, "RegisterScreenArt");
+        var screenMaterial = EditorAssets.GetOrCreateUrpLit(
+            $"{MaterialsFolder}/RegisterScreenArt.mat", material =>
+            {
+                material.SetTexture("_BaseMap", displayTexture);
+                material.SetColor("_BaseColor", Color.white);
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", new Color(0.16f, 0.35f, 0.2f));
+                material.SetTexture("_EmissionMap", displayTexture);
+                material.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+            });
+        Part("Screen", PrimitiveType.Cube, register.transform,
+            new Vector3(0f, 0.31f, 0.11f), new Vector3(-14f, 180f, 0f), new Vector3(0.26f, 0.17f, 0.02f),
+            screenMaterial, keepCollider: true);
 
-        var paperRoll = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        paperRoll.name = "PaperRoll";
-        paperRoll.transform.SetParent(register.transform, false);
-        paperRoll.transform.localPosition = new Vector3(-0.1f, 0.16f, 0.1f);
-        paperRoll.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-        paperRoll.transform.localScale = new Vector3(0.05f, 0.06f, 0.05f);
-        paperRoll.GetComponent<Renderer>().sharedMaterial =
-            PlainMaterial("PaperArt", new Color(0.94f, 0.93f, 0.9f), 0.05f);
-        Object.DestroyImmediate(paperRoll.GetComponent<Collider>());
+        Part("PaperRoll", PrimitiveType.Cylinder, register.transform,
+            new Vector3(-0.1f, 0.16f, 0.1f), new Vector3(0f, 0f, 90f), new Vector3(0.05f, 0.06f, 0.05f),
+            PlainMaterial("PaperArt", new Color(0.94f, 0.93f, 0.9f), 0.05f));
+    }
+
+    private static GameObject Part(string name, PrimitiveType type, Transform parent,
+        Vector3 localPosition, Vector3 localEuler, Vector3 localScale, Material material,
+        bool keepCollider = false)
+    {
+        var part = GameObject.CreatePrimitive(type);
+        part.name = name;
+        part.transform.SetParent(parent, false);
+        part.transform.localPosition = localPosition;
+        part.transform.localRotation = Quaternion.Euler(localEuler);
+        part.transform.localScale = localScale;
+        part.GetComponent<Renderer>().sharedMaterial = material;
+        if (!keepCollider)
+        {
+            Object.DestroyImmediate(part.GetComponent<Collider>());
+        }
+        return part;
     }
 
     private static void BuildLightRig()
@@ -238,34 +234,22 @@ public static class EnvironmentArtBuilder
 
     private static Material TexturedMaterial(string name, Texture2D texture, Vector2 tiling, float smoothness)
     {
-        var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        material.SetTexture("_BaseMap", texture);
-        material.SetTextureScale("_BaseMap", tiling);
-        material.SetColor("_BaseColor", Color.white);
-        material.SetFloat("_Smoothness", smoothness);
-        return SaveMaterial(material, name);
+        return EditorAssets.GetOrCreateUrpLit($"{MaterialsFolder}/{name}.mat", material =>
+        {
+            material.SetTexture("_BaseMap", texture);
+            material.SetTextureScale("_BaseMap", tiling);
+            material.SetColor("_BaseColor", Color.white);
+            material.SetFloat("_Smoothness", smoothness);
+        });
     }
 
     private static Material PlainMaterial(string name, Color color, float smoothness)
     {
-        var material = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        material.SetColor("_BaseColor", color);
-        material.SetFloat("_Smoothness", smoothness);
-        return SaveMaterial(material, name);
-    }
-
-    private static Material SaveMaterial(Material material, string name)
-    {
-        var path = $"{MaterialsFolder}/{name}.mat";
-        var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
-        if (existing != null)
+        return EditorAssets.GetOrCreateUrpLit($"{MaterialsFolder}/{name}.mat", material =>
         {
-            existing.CopyPropertiesFromMaterial(material);
-            Object.DestroyImmediate(material);
-            return existing;
-        }
-        AssetDatabase.CreateAsset(material, path);
-        return material;
+            material.SetColor("_BaseColor", color);
+            material.SetFloat("_Smoothness", smoothness);
+        });
     }
 
     private static GameObject Ensure(string name)

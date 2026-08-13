@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using PsyCurio.Shop.Domain;
@@ -75,7 +76,10 @@ namespace PsyCurio.Shop.Therapist
 
         private static string Iso(DateTime utc)
         {
-            return utc.ToString("yyyy-MM-ddTHH:mm:ssZ");
+            // Invariant culture: in a custom format the bare ':' is the
+            // *current* culture's time separator, which would corrupt the
+            // session JSON on locales that use another character.
+            return utc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
         }
     }
 }

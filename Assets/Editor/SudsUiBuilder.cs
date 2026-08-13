@@ -17,31 +17,8 @@ public static class SudsUiBuilder
 
     public static SudsPrompt Build(Camera camera)
     {
-        var existing = GameObject.Find("SudsUi");
-        if (existing != null)
-        {
-            Object.DestroyImmediate(existing);
-        }
-
-        var font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
-            "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
-        var resources = new DefaultControls.Resources
-        {
-            standard = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"),
-            background = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Background.psd"),
-            knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd")
-        };
-
-        var root = new GameObject("SudsUi");
-        var canvas = root.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = camera;
-        canvas.planeDistance = 0.8f;
-        canvas.sortingOrder = 40;
-        var scaler = root.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        root.AddComponent<GraphicRaycaster>();
+        var resources = UiKit.StandardResources();
+        var root = UiKit.ScreenCanvas("SudsUi", camera, planeDistance: 0.8f, sortingOrder: 40);
 
         // Full-screen backdrop: dims the scene and blocks every click behind it.
         var prompt = new GameObject("Prompt", typeof(RectTransform));
@@ -72,33 +49,21 @@ public static class SudsUiBuilder
         layout.childForceExpandHeight = false;
         layout.childAlignment = TextAnchor.UpperCenter;
 
-        Label(card, font, "How distressed do you feel right now?", 40f, TextDark,
+        UiKit.LayoutLabel(card, "How distressed do you feel right now?", 40f, TextDark,
             FontStyles.Bold, TextAlignmentOptions.Center, 56f);
-        Label(card, font, "0 = no distress at all      100 = the worst imaginable", 24f,
+        UiKit.LayoutLabel(card, "0 = no distress at all      100 = the worst imaginable", 24f,
             new Color(0.42f, 0.44f, 0.48f), FontStyles.Normal, TextAlignmentOptions.Center, 32f);
 
-        var valueLabel = Label(card, font, "50", 100f, Accent,
+        var valueLabel = UiKit.LayoutLabel(card, "50", 100f, Accent,
             FontStyles.Bold, TextAlignmentOptions.Center, 118f);
 
-        var sliderObject = DefaultControls.CreateSlider(resources);
-        sliderObject.transform.SetParent(card.transform, false);
-        var sliderElement = sliderObject.AddComponent<LayoutElement>();
-        sliderElement.minHeight = 44f;
-        sliderElement.preferredHeight = 44f;
-        sliderElement.flexibleHeight = 0f;
-        var slider = sliderObject.GetComponent<Slider>();
-        slider.minValue = 0f;
-        slider.maxValue = 100f;
-        slider.wholeNumbers = true;
+        var slider = UiKit.StyledSlider(card, resources, 0f, 100f, wholeNumbers: true, height: 44f,
+            background: new Color(0.78f, 0.8f, 0.82f), fill: Accent, handle: Color.white);
         slider.value = 50f;
-        sliderObject.transform.Find("Background").GetComponent<Image>().color =
-            new Color(0.78f, 0.8f, 0.82f);
-        sliderObject.transform.Find("Fill Area/Fill").GetComponent<Image>().color = Accent;
-        var handle = sliderObject.transform.Find("Handle Slide Area/Handle").GetComponent<Image>();
-        handle.color = Color.white;
-        handle.rectTransform.sizeDelta = new Vector2(40f, 40f);
+        // An oversized handle: the patient drags this on a phone screen.
+        slider.handleRect.sizeDelta = new Vector2(40f, 40f);
 
-        Spacer(card, 10f);
+        UiKit.Spacer(card, 10f);
 
         // Centered confirm button in a non-stretching row.
         var buttonRow = new GameObject("ButtonRow", typeof(RectTransform));
@@ -108,35 +73,10 @@ public static class SudsUiBuilder
         rowLayout.childControlHeight = false;
         rowLayout.childForceExpandWidth = false;
         rowLayout.childAlignment = TextAnchor.MiddleCenter;
-        var rowElement = buttonRow.AddComponent<LayoutElement>();
-        rowElement.minHeight = 68f;
-        rowElement.preferredHeight = 68f;
-        rowElement.flexibleHeight = 0f;
+        UiKit.FixedHeight(buttonRow, 68f);
 
-        var button = new GameObject("ConfirmButton", typeof(RectTransform));
-        button.transform.SetParent(buttonRow.transform, false);
-        var buttonRect = button.GetComponent<RectTransform>();
-        buttonRect.sizeDelta = new Vector2(280f, 64f);
-        var buttonImage = button.AddComponent<Image>();
-        buttonImage.sprite = resources.standard;
-        buttonImage.type = Image.Type.Sliced;
-        buttonImage.color = Accent;
-        var confirmButton = button.AddComponent<Button>();
-        confirmButton.targetGraphic = buttonImage;
-
-        var buttonLabelObject = new GameObject("Label", typeof(RectTransform));
-        buttonLabelObject.transform.SetParent(button.transform, false);
-        var buttonLabelRect = buttonLabelObject.GetComponent<RectTransform>();
-        buttonLabelRect.anchorMin = Vector2.zero;
-        buttonLabelRect.anchorMax = Vector2.one;
-        buttonLabelRect.offsetMin = Vector2.zero;
-        buttonLabelRect.offsetMax = Vector2.zero;
-        var buttonLabel = buttonLabelObject.AddComponent<TextMeshProUGUI>();
-        buttonLabel.font = font;
-        buttonLabel.fontSize = 30f;
-        buttonLabel.color = Color.white;
-        buttonLabel.alignment = TextAlignmentOptions.Center;
-        buttonLabel.text = "Confirm";
+        var confirmButton = UiKit.SpriteButton(buttonRow, "ConfirmButton", Accent, "Confirm", 30f);
+        ((RectTransform)confirmButton.transform).sizeDelta = new Vector2(280f, 64f);
 
         prompt.SetActive(false);
 
@@ -148,34 +88,5 @@ public static class SudsUiBuilder
         serialized.FindProperty("confirmButton").objectReferenceValue = confirmButton;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return promptComponent;
-    }
-
-    private static TextMeshProUGUI Label(GameObject parent, TMP_FontAsset font, string content,
-        float size, Color color, FontStyles style, TextAlignmentOptions alignment, float height)
-    {
-        var labelObject = new GameObject("Label", typeof(RectTransform));
-        labelObject.transform.SetParent(parent.transform, false);
-        var label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.font = font;
-        label.fontSize = size;
-        label.color = color;
-        label.fontStyle = style;
-        label.alignment = alignment;
-        label.text = content;
-        var element = labelObject.AddComponent<LayoutElement>();
-        element.minHeight = height;
-        element.preferredHeight = height;
-        element.flexibleHeight = 0f;
-        return label;
-    }
-
-    private static void Spacer(GameObject parent, float height)
-    {
-        var spacer = new GameObject("Spacer", typeof(RectTransform));
-        spacer.transform.SetParent(parent.transform, false);
-        var element = spacer.AddComponent<LayoutElement>();
-        element.minHeight = height;
-        element.preferredHeight = height;
-        element.flexibleHeight = 0f;
     }
 }

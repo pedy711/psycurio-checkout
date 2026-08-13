@@ -19,6 +19,19 @@ public static class SceneWiring
     [MenuItem("PsyCurio/Wire Scene Interactions")]
     public static void Apply()
     {
+        // Gate the WHOLE run on TMP: aborting one wiring step while the rest
+        // continues, saves and logs success would hide a null balloon until
+        // the first Say() throws in Play mode.
+        if (!EditorAssets.TmpEssentialsPresent())
+        {
+            Debug.LogError("SceneWiring: TMP essential resources missing — nothing wired. "
+                + "Import them via Window > TextMeshPro > Import TMP Essential Resources, or run "
+                + "Unity with -importPackage \"<project>/Library/PackageCache/com.unity.ugui@*/"
+                + "Package Resources/TMP Essential Resources.unitypackage\" (AssetDatabase."
+                + "ImportPackage in a -quit batch run only queues the import and persists nothing).");
+            return;
+        }
+
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
 
         var camera = Camera.main;
@@ -34,9 +47,13 @@ public static class SceneWiring
         }
 
         var slots = WireCounterSlots();
+        if (slots == null)
+        {
+            return;
+        }
         var controller = WireShopController(slots);
         WireShelfItems(controller);
-        WireCashierSpeech();
+        WireCashierSpeech(camera);
         WireRegister(controller);
         WireControllerCashier(controller);
         EnsureEventSystem();
@@ -76,7 +93,13 @@ public static class SceneWiring
         {
             spawner = bystandersObject.AddComponent<PsyCurio.Shop.Therapist.BystanderSpawner>();
         }
-        var anchorsRoot = GameObject.Find("QueueAnchors").transform;
+        var queueAnchorsObject = GameObject.Find("QueueAnchors");
+        if (queueAnchorsObject == null)
+        {
+            Debug.LogError("SceneWiring: QueueAnchors not found — run PsyCurio > Rebuild Greybox Scene first");
+            return;
+        }
+        var anchorsRoot = queueAnchorsObject.transform;
         var serializedSpawner = new SerializedObject(spawner);
         var anchorArray = serializedSpawner.FindProperty("queueAnchors");
         anchorArray.arraySize = anchorsRoot.childCount;
@@ -150,6 +173,10 @@ public static class SceneWiring
         var cashier = Object.FindFirstObjectByType<Cashier>();
         if (cashier == null)
         {
+            // Loud, not silent: without this reference the refusal line and
+            // the register narration cannot be spoken at runtime.
+            Debug.LogError("SceneWiring: no Cashier in scene — the controller's spoken "
+                + "feedback is unwired; run PsyCurio > Setup Cashier, then re-wire");
             return;
         }
         var serialized = new SerializedObject(controller);
@@ -171,31 +198,11 @@ public static class SceneWiring
 
     /// <summary>
     /// Screen UI: the first-run hint (top center, fades on first interaction)
-    /// and the reset button (bottom right). Screen Space - Camera rather than
-    /// Overlay so the offscreen render requests used for verification include
-    /// it; visually identical here.
+    /// and the reset button (bottom right, quiet — present but not loud).
     /// </summary>
     private static void BuildScreenUi(Camera camera, ShopController controller)
     {
-        var existing = GameObject.Find("ScreenUi");
-        if (existing != null)
-        {
-            Object.DestroyImmediate(existing);
-        }
-
-        var root = new GameObject("ScreenUi");
-        var canvas = root.AddComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceCamera;
-        canvas.worldCamera = camera;
-        canvas.planeDistance = 1f;
-        canvas.sortingOrder = 20;
-        var scaler = root.AddComponent<UnityEngine.UI.CanvasScaler>();
-        scaler.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        root.AddComponent<UnityEngine.UI.GraphicRaycaster>();
-
-        var font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(
-            "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+        var root = UiKit.ScreenCanvas("ScreenUi", camera, planeDistance: 1f, sortingOrder: 20);
 
         // First-run hint: dark pill, white text, top center.
         var hint = new GameObject("FirstRunHint", typeof(RectTransform));
@@ -211,57 +218,16 @@ public static class SceneWiring
         hintImage.type = UnityEngine.UI.Image.Type.Sliced;
         hintImage.color = new Color(0.08f, 0.09f, 0.11f, 0.72f);
         hint.AddComponent<CanvasGroup>();
-
-        var hintTextObject = new GameObject("Text", typeof(RectTransform));
-        hintTextObject.transform.SetParent(hint.transform, false);
-        var hintTextRect = hintTextObject.GetComponent<RectTransform>();
-        hintTextRect.anchorMin = Vector2.zero;
-        hintTextRect.anchorMax = Vector2.one;
-        hintTextRect.offsetMin = Vector2.zero;
-        hintTextRect.offsetMax = Vector2.zero;
-        var hintText = hintTextObject.AddComponent<TMPro.TextMeshProUGUI>();
-        hintText.font = font;
-        hintText.fontSize = 30f;
-        hintText.color = Color.white;
-        hintText.alignment = TMPro.TextAlignmentOptions.Center;
-        hintText.text = "Click an item on the shelf to put it on the counter.";
+        UiKit.FillLabel(hint, "Click an item on the shelf to put it on the counter.", 30f, Color.white);
 
         var hintComponent = hint.AddComponent<FirstRunHint>();
         var serializedHint = new SerializedObject(hintComponent);
         serializedHint.FindProperty("router").objectReferenceValue = camera.GetComponent<ClickRouter>();
         serializedHint.ApplyModifiedPropertiesWithoutUndo();
 
-        // Reset button: bottom right, quiet styling — present but not loud.
-        var button = new GameObject("ResetButton", typeof(RectTransform));
-        button.transform.SetParent(root.transform, false);
-        var buttonRect = button.GetComponent<RectTransform>();
-        buttonRect.anchorMin = new Vector2(1f, 0f);
-        buttonRect.anchorMax = new Vector2(1f, 0f);
-        buttonRect.pivot = new Vector2(1f, 0f);
-        buttonRect.anchoredPosition = new Vector2(-28f, 28f);
-        buttonRect.sizeDelta = new Vector2(210f, 56f);
-        var buttonImage = button.AddComponent<UnityEngine.UI.Image>();
-        buttonImage.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-        buttonImage.type = UnityEngine.UI.Image.Type.Sliced;
-        buttonImage.color = new Color(0.16f, 0.17f, 0.19f, 0.9f);
-        var buttonComponent = button.AddComponent<UnityEngine.UI.Button>();
-        buttonComponent.targetGraphic = buttonImage;
-
-        var labelObject = new GameObject("Label", typeof(RectTransform));
-        labelObject.transform.SetParent(button.transform, false);
-        var labelRect = labelObject.GetComponent<RectTransform>();
-        labelRect.anchorMin = Vector2.zero;
-        labelRect.anchorMax = Vector2.one;
-        labelRect.offsetMin = Vector2.zero;
-        labelRect.offsetMax = Vector2.zero;
-        var label = labelObject.AddComponent<TMPro.TextMeshProUGUI>();
-        label.font = font;
-        label.fontSize = 26f;
-        label.color = Color.white;
-        label.alignment = TMPro.TextAlignmentOptions.Center;
-        label.text = "Reset counter";
-
-        var resetComponent = button.AddComponent<ResetButton>();
+        var resetButton = UiKit.CornerChip(root, "ResetButton", new Vector2(1f, 0f),
+            new Vector2(-28f, 28f), new Vector2(210f, 56f), "Reset counter");
+        var resetComponent = resetButton.gameObject.AddComponent<ResetButton>();
         var serializedReset = new SerializedObject(resetComponent);
         serializedReset.FindProperty("controller").objectReferenceValue = controller;
         serializedReset.ApplyModifiedPropertiesWithoutUndo();
@@ -292,22 +258,17 @@ public static class SceneWiring
     }
 
     /// <summary>
-    /// Ensures TMP essential resources exist (imported non-interactively from
-    /// the uGUI package) and builds the cashier's speech balloon: world-space
-    /// canvas above her head, sliced bubble, auto-height text. Idempotent —
-    /// rebuilt from scratch on every run so tweaks land everywhere.
+    /// Builds the cashier's speech balloon: world-space canvas above her head,
+    /// sliced bubble, auto-height text. TMP presence is guaranteed — Apply()
+    /// gates on it before any wiring runs. Idempotent — rebuilt from scratch
+    /// on every run so tweaks land everywhere.
     /// </summary>
-    private static void WireCashierSpeech()
+    private static void WireCashierSpeech(Camera camera)
     {
         var cashier = Object.FindFirstObjectByType<Cashier>();
         if (cashier == null)
         {
             Debug.LogError("SceneWiring: no Cashier in scene — run CashierSetup first");
-            return;
-        }
-
-        if (!TmpEssentialsPresent())
-        {
             return;
         }
 
@@ -361,10 +322,7 @@ public static class SceneWiring
         var text = textObject.AddComponent<TMPro.TextMeshProUGUI>();
         // Explicit font: a script-created TMP component serializes font=null,
         // which renders as no text at all — in editor and in player alike.
-        // Loaded straight from the asset path; TMP_Settings.defaultFontAsset
-        // is avoided because its getter itself NREs before settings load.
-        text.font = AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(
-            "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+        text.font = EditorAssets.TmpFont();
         text.fontSize = 34f;
         text.color = new Color(0.09f, 0.09f, 0.11f);
         text.alignment = TMPro.TextAlignmentOptions.Center;
@@ -374,6 +332,10 @@ public static class SceneWiring
         var balloon = balloonObject.AddComponent<SpeechBalloon>();
         var serializedBalloon = new SerializedObject(balloon);
         serializedBalloon.FindProperty("messageText").objectReferenceValue = text;
+        // Wired, not discovered: Camera.main at runtime is a tag lookup that
+        // breaks silently if the tag ever changes — the balloon keeps it only
+        // as an Awake fallback.
+        serializedBalloon.FindProperty("viewCamera").objectReferenceValue = camera;
         serializedBalloon.ApplyModifiedPropertiesWithoutUndo();
 
         var serializedCashier = new SerializedObject(cashier);
@@ -381,33 +343,12 @@ public static class SceneWiring
         serializedCashier.ApplyModifiedPropertiesWithoutUndo();
     }
 
-    /// <summary>
-    /// TMP essentials must already be on disk. AssetDatabase.ImportPackage in
-    /// a -quit batch run only queues the import and nothing persists, so the
-    /// import has to happen via Unity's synchronous -importPackage CLI
-    /// argument (or the editor dialog) before this wiring runs.
-    /// </summary>
-    private static bool TmpEssentialsPresent()
-    {
-        if (AssetDatabase.LoadAssetAtPath<TMPro.TMP_FontAsset>(
-                "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset") != null)
-        {
-            return true;
-        }
-
-        Debug.LogError("SceneWiring: TMP essential resources missing — run Unity with "
-            + "-importPackage \"<project>/Library/PackageCache/com.unity.ugui@*/Package Resources/"
-            + "TMP Essential Resources.unitypackage\" first (or Window > TextMeshPro > Import TMP Essential Resources)");
-        return false;
-    }
-
     private static void WireRegister(ShopController controller)
     {
         var registerObject = GameObject.Find("CashRegister");
-        var cashier = Object.FindFirstObjectByType<Cashier>();
-        if (registerObject == null || cashier == null)
+        if (registerObject == null)
         {
-            Debug.LogError("SceneWiring: register or cashier missing — cannot wire checkout");
+            Debug.LogError("SceneWiring: CashRegister missing — run PsyCurio > Rebuild Greybox Scene first");
             return;
         }
 
@@ -416,20 +357,30 @@ public static class SceneWiring
         {
             register = registerObject.AddComponent<CashRegister>();
         }
-        if (registerObject.GetComponent<HoverHighlight>() == null)
+        // Recreated, not kept: an existing component carries the serialized
+        // defaults of whatever code version added it.
+        var staleHighlight = registerObject.GetComponent<HoverHighlight>();
+        if (staleHighlight != null)
         {
-            registerObject.AddComponent<HoverHighlight>();
+            Object.DestroyImmediate(staleHighlight);
         }
+        registerObject.AddComponent<HoverHighlight>();
 
+        // The register only forwards to the controller; the cashier reference
+        // lives on the controller (the sole domain bridge).
         var serialized = new SerializedObject(register);
         serialized.FindProperty("controller").objectReferenceValue = controller;
-        serialized.FindProperty("cashier").objectReferenceValue = cashier;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 
     private static CounterSlots WireCounterSlots()
     {
         var anchorsRoot = GameObject.Find("Counter/SlotAnchors");
+        if (anchorsRoot == null)
+        {
+            Debug.LogError("SceneWiring: Counter/SlotAnchors not found — run PsyCurio > Rebuild Greybox Scene first");
+            return null;
+        }
         var slots = anchorsRoot.GetComponent<CounterSlots>();
         if (slots == null)
         {

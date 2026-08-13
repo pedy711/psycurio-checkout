@@ -26,7 +26,16 @@ public static class BuildTools
 
         if (report.summary.result != BuildResult.Succeeded)
         {
-            EditorApplication.Exit(1);
+            // Headless CI must fail the process; from the menu, exiting would
+            // hard-kill the whole editor along with any unsaved work.
+            if (Application.isBatchMode)
+            {
+                EditorApplication.Exit(1);
+            }
+            else
+            {
+                Debug.LogError("BuildTools: Android build failed — see the build report above.");
+            }
         }
     }
 }

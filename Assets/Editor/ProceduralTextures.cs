@@ -257,19 +257,23 @@ public static class ProceduralTextures
 
     private static Texture2D Save(Texture2D texture, string name, TextureWrapMode wrap)
     {
-        if (!AssetDatabase.IsValidFolder(Folder))
-        {
-            AssetDatabase.CreateFolder("Assets/Art", "Generated");
-        }
+        // Creates missing parents too — Assets/Art only exists once Mixamo
+        // files have been placed, and this must not depend on that.
+        EditorAssets.EnsureFolder(Folder);
         texture.Apply();
         var path = $"{Folder}/{name}.png";
         File.WriteAllBytes(path, texture.EncodeToPNG());
         Object.DestroyImmediate(texture);
         AssetDatabase.ImportAsset(path);
 
+        // Reimport only when the wrap mode actually differs — the second
+        // import per texture per pipeline run is pure waste otherwise.
         var importer = (TextureImporter)AssetImporter.GetAtPath(path);
-        importer.wrapMode = wrap;
-        importer.SaveAndReimport();
+        if (importer.wrapMode != wrap)
+        {
+            importer.wrapMode = wrap;
+            importer.SaveAndReimport();
+        }
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
     }
 }

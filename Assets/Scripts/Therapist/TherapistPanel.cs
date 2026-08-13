@@ -90,7 +90,9 @@ namespace PsyCurio.Shop.Therapist
 
         private void ApplyBystanders(float value)
         {
-            var count = Mathf.RoundToInt(value);
+            // Clamp before storing: the logged snapshot must record how many
+            // bystanders actually spawned, not what the slider asked for.
+            var count = Mathf.Clamp(Mathf.RoundToInt(value), 0, bystanders.MaxCount);
             settings.bystanderCount = count;
             bystanders.SetCount(count);
             bystanderLabel.text = $"Bystanders: {count}";

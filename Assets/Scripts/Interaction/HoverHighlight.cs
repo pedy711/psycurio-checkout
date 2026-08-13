@@ -4,18 +4,23 @@ using UnityEngine;
 namespace PsyCurio.Shop.Interaction
 {
     /// <summary>
-    /// Brightens all child renderers while hovered, via MaterialPropertyBlock
-    /// so shared materials are never instantiated. Lives on every clickable
-    /// prefab; ClickRouter drives it only when the object is truly clickable.
+    /// Tints all child renderers toward a warm highlight while hovered, via
+    /// MaterialPropertyBlock so shared materials are never instantiated. The
+    /// tint must differ from white: textured materials keep a white base color
+    /// (detail lives in the texture), so lerping toward white would be
+    /// invisible exactly where the affordance matters most. Lives on every
+    /// clickable prefab; ClickRouter drives it only when the object is truly
+    /// clickable.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HoverHighlight : MonoBehaviour, IHoverable
     {
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        private static readonly Color HighlightTint = new Color(1f, 0.82f, 0.4f);
 
-        [Tooltip("0 = no change, 1 = fully white while hovered.")]
+        [Tooltip("0 = no change, 1 = fully the highlight tint while hovered.")]
         [Range(0f, 1f)]
-        [SerializeField] private float brighten = 0.3f;
+        [SerializeField] private float brighten = 0.45f;
 
         private readonly List<(Renderer renderer, Color baseColor)> targets =
             new List<(Renderer, Color)>();
@@ -51,7 +56,7 @@ namespace PsyCurio.Shop.Interaction
 
                 if (brightened)
                 {
-                    block.SetColor(BaseColorId, Color.Lerp(baseColor, Color.white, brighten));
+                    block.SetColor(BaseColorId, Color.Lerp(baseColor, HighlightTint, brighten));
                     childRenderer.SetPropertyBlock(block);
                 }
                 else

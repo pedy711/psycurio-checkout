@@ -32,12 +32,21 @@ public static class BystanderSetup
             Debug.LogError($"BystanderSetup: no character FBX files in {Folder}");
             return;
         }
+        // Validate every input before any destructive step (BuildIdleController
+        // deletes the committed controller the existing prefabs reference).
+        if (AssetImporter.GetAtPath(IdleClipPath) == null)
+        {
+            Debug.LogError($"BystanderSetup: missing {IdleClipPath} — run CashierSetup "
+                + "after the Mixamo download first");
+            return;
+        }
 
         var controller = BuildIdleController();
-        if (!AssetDatabase.IsValidFolder(PrefabsFolder))
+        if (controller == null)
         {
-            AssetDatabase.CreateFolder("Assets/Prefabs", "Bystanders");
+            return;
         }
+        EditorAssets.EnsureFolder(PrefabsFolder);
 
         foreach (var path in characterPaths)
         {
@@ -58,48 +67,32 @@ public static class BystanderSetup
         importer.ExtractTextures(Folder + "/Textures");
         importer.SaveAndReimport();
 
-        // URP materials from the embedded textures, remapped on the importer.
-        var materialsFolder = Folder + "/Materials";
-        if (!AssetDatabase.IsValidFolder(materialsFolder))
-        {
-            AssetDatabase.CreateFolder(Folder, "Materials");
-        }
-        var character = AssetDatabase.LoadAssetAtPath<GameObject>(path);
+        // Name-prefixed so same-named materials from different FBXs sharing
+        // this folder never overwrite each other.
         var characterName = System.IO.Path.GetFileNameWithoutExtension(path);
-        foreach (var renderer in character.GetComponentsInChildren<Renderer>())
-        {
-            foreach (var sourceMaterial in renderer.sharedMaterials)
-            {
-                if (sourceMaterial == null)
-                {
-                    continue;
-                }
-                var materialPath = $"{materialsFolder}/{characterName}_{sourceMaterial.name}.mat";
-                var urpMaterial = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
-                if (urpMaterial == null)
-                {
-                    urpMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                    AssetDatabase.CreateAsset(urpMaterial, materialPath);
-                }
-                urpMaterial.SetTexture("_BaseMap", sourceMaterial.mainTexture);
-
-                importer.AddRemap(
-                    new AssetImporter.SourceAssetIdentifier(typeof(Material), sourceMaterial.name),
-                    urpMaterial);
-            }
-        }
-        importer.SaveAndReimport();
+        MixamoImportUtil.RemapToUrpMaterials(path, Folder + "/Materials", characterName + "_");
     }
 
     private static AnimatorController BuildIdleController()
     {
+        // The clip is resolved BEFORE the delete: destroying the committed
+        // controller and then throwing would leave every bystander prefab
+        // T-posed with a missing-controller reference.
+        var idleClip = AssetDatabase.LoadAllAssetsAtPath(IdleClipPath)
+            .OfType<AnimationClip>()
+            .FirstOrDefault(clip => !clip.name.Contains("__preview__"));
+        if (idleClip == null)
+        {
+            Debug.LogError($"BystanderSetup: no animation clip inside {IdleClipPath} — "
+                + "is it imported as Humanoid (CashierSetup does this)?");
+            return null;
+        }
+
         AssetDatabase.DeleteAsset(ControllerPath);
         var controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
         var machine = controller.layers[0].stateMachine;
         var idle = machine.AddState("Idle");
-        idle.motion = AssetDatabase.LoadAllAssetsAtPath(IdleClipPath)
-            .OfType<AnimationClip>()
-            .First(clip => !clip.name.Contains("__preview__"));
+        idle.motion = idleClip;
         machine.defaultState = idle;
         return controller;
     }

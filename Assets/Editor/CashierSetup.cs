@@ -84,44 +84,13 @@ public static class CashierSetup
     }
 
     /// <summary>
-    /// Mixamo materials import as Standard shader and render pink under URP
-    /// (and Unity 6.3 removed the quick Edit-menu converter), so build URP Lit
-    /// materials from the extracted textures and remap the importer to them.
+    /// URP Lit materials from the extracted textures, remapped on the importer
+    /// — the shared MixamoImportUtil recipe. No name prefix: the cashier's
+    /// material asset paths predate the prefixing the bystanders need.
     /// </summary>
     private static void BuildMaterials()
     {
-        var importer = (ModelImporter)AssetImporter.GetAtPath(CharacterPath);
-        var materialsFolder = Folder + "/Materials";
-        if (!AssetDatabase.IsValidFolder(materialsFolder))
-        {
-            AssetDatabase.CreateFolder(Folder, "Materials");
-        }
-
-        var character = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPath);
-        foreach (var renderer in character.GetComponentsInChildren<Renderer>())
-        {
-            foreach (var sourceMaterial in renderer.sharedMaterials)
-            {
-                if (sourceMaterial == null)
-                {
-                    continue;
-                }
-
-                var path = $"{materialsFolder}/{sourceMaterial.name}.mat";
-                var urpMaterial = AssetDatabase.LoadAssetAtPath<Material>(path);
-                if (urpMaterial == null)
-                {
-                    urpMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                    AssetDatabase.CreateAsset(urpMaterial, path);
-                }
-                urpMaterial.SetTexture("_BaseMap", sourceMaterial.mainTexture);
-
-                importer.AddRemap(
-                    new AssetImporter.SourceAssetIdentifier(typeof(Material), sourceMaterial.name),
-                    urpMaterial);
-            }
-        }
-        importer.SaveAndReimport();
+        MixamoImportUtil.RemapToUrpMaterials(CharacterPath, Folder + "/Materials", "");
     }
 
     private static AnimatorController BuildAnimatorController()
@@ -160,6 +129,11 @@ public static class CashierSetup
     {
         EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
         var anchor = GameObject.Find("CashierAnchor");
+        if (anchor == null)
+        {
+            Debug.LogError("CashierSetup: no CashierAnchor in scene — run PsyCurio > Rebuild Greybox Scene first");
+            return;
+        }
 
         for (var i = anchor.transform.childCount - 1; i >= 0; i--)
         {
@@ -190,6 +164,12 @@ public static class CashierSetup
         if (instance.GetComponent<HoverHighlight>() == null)
         {
             instance.AddComponent<HoverHighlight>();
+        }
+
+        if (Object.FindFirstObjectByType<ShopController>() != null)
+        {
+            Debug.LogWarning("CashierSetup: the cashier was recreated, so references held "
+                + "by the scene wiring are now stale — run PsyCurio > Wire Scene Interactions.");
         }
 
         EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());

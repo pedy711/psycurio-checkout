@@ -228,7 +228,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1ff9c1fe170154ba493486e32cd977b8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PsyCurio.Shop.Interaction.HoverHighlight
-  brighten: 0.3
+  brighten: 0.45
 --- !u!65 &196868226864069894
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -248,8 +248,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 0.118800014, y: 0.17955, z: 0.11880003}
-  m_Center: {x: 0.000000007450581, y: 0.089775, z: -0.000000011175871}
+  m_Size: {x: 0.118800014, y: 0.17955, z: 0.11880002}
+  m_Center: {x: 0.0000000055189484, y: 0.0665, z: -0.000000008278422}
 --- !u!1 &6508610930475112268
 GameObject:
   m_ObjectHideFlags: 0
