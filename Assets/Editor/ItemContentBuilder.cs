@@ -67,8 +67,7 @@ public static class ItemContentBuilder
         var root = new GameObject(spec.Name);
         BuildVisual(spec.Name, root.transform);
         // Real-world grocery dimensions read too small from the fixed camera
-        // 4 m away; stage presence wants ~a third more. Scaling the root keeps
-        // the bottom pivot, and the collider below measures scaled bounds.
+        // 4 m away; scaling the root keeps the bottom pivot.
         root.transform.localScale = Vector3.one * 1.35f;
         root.AddComponent<PsyCurio.Shop.Interaction.HoverHighlight>();
 
@@ -82,10 +81,9 @@ public static class ItemContentBuilder
         {
             bounds.Encapsulate(renderer.bounds);
         }
-        // Tap padding: the effective (world) box extends ~35% beyond the
-        // visual bounds with a per-axis floor — sizes validated by touch on
-        // an S21 Ultra. Renderer bounds are world-space while
-        // BoxCollider.center/size are local, so both divide by the root scale.
+        // Tap targets extend ~35% beyond the visual bounds with a per-axis
+        // floor (device-validated — do not shrink). Renderer bounds are
+        // world-space, BoxCollider fields local: divide by the root scale.
         const float tapPadScale = 1.35f;
         const float minTapExtent = 0.135f;
         var rootScale = root.transform.localScale.x;
@@ -311,9 +309,8 @@ public static class ItemContentBuilder
     /// </summary>
     public static GameObject BuildBystanderPrefab()
     {
-        // Always rebuilt: a get-or-skip guard would pin the asset to whatever
-        // version of this code first created it. SaveAsPrefabAsset overwrites
-        // in place, so the GUID and every scene reference survive.
+        // Always rebuilt so the asset converges on this code; SaveAsPrefabAsset
+        // overwrites in place, keeping the GUID and every scene reference.
         const string path = "Assets/Prefabs/Bystander.prefab";
         EditorAssets.EnsureFolder("Assets/Prefabs");
 
@@ -380,10 +377,8 @@ public static class ItemContentBuilder
             AnimationCurve.EaseInOut(0f, 1f, 1f, 0f));
 
         var renderer = root.GetComponent<ParticleSystemRenderer>();
-        // Not the built-in Default-ParticleSystem.mat: its 'Particles/Standard
-        // Unlit' shader belongs to the built-in pipeline and renders magenta
-        // under URP. A URP particle material around the same soft-circle
-        // sprite, saved as an asset so the prefab reference survives.
+        // Not the built-in Default-ParticleSystem.mat — its shader belongs to
+        // the built-in pipeline and renders magenta under URP.
         renderer.sharedMaterial = EditorAssets.GetOrCreateMaterial(
             "Assets/Materials/LandingBurst.mat",
             "Universal Render Pipeline/Particles/Unlit",

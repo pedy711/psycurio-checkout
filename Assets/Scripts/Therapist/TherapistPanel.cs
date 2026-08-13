@@ -42,7 +42,6 @@ namespace PsyCurio.Shop.Therapist
         {
             // Start, not Awake: every scene target must have finished its own
             // Awake before defaults are pushed into it.
-            // UI reflects the code defaults once, then the listeners own it.
             eyeContactToggle.SetIsOnWithoutNotify(settings.eyeContact);
             delaySlider.SetValueWithoutNotify(cashier.ResponseDelaySeconds);
             bystanderSlider.SetValueWithoutNotify(0f);
@@ -90,8 +89,7 @@ namespace PsyCurio.Shop.Therapist
 
         private void ApplyBystanders(float value)
         {
-            // Clamp before storing: the logged snapshot must record how many
-            // bystanders actually spawned, not what the slider asked for.
+            // The logged snapshot must record how many actually spawned.
             var count = Mathf.Clamp(Mathf.RoundToInt(value), 0, bystanders.MaxCount);
             settings.bystanderCount = count;
             bystanders.SetCount(count);

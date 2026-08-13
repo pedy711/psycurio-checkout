@@ -15,7 +15,6 @@ namespace PsyCurio.Shop
 
         public void OnClick()
         {
-            // The copy departs from the display item the patient clicked.
             controller.TryPlace(definition, transform.position);
         }
     }

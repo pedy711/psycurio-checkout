@@ -25,9 +25,8 @@ namespace PsyCurio.Shop
             for (var t = 0f; t < FlightSeconds; t += Time.deltaTime)
             {
                 var progress = Mathf.SmoothStep(0f, 1f, t / FlightSeconds);
-                // The target chases the *current* parent every frame: when a
-                // removal shifts this still-flying item to a lower slot, the
-                // arc bends toward the new anchor instead of teleporting.
+                // Re-read the parent each frame: a mid-flight shift-down
+                // retargets the arc instead of teleporting the item.
                 var targetWorld = transform.parent.TransformPoint(toLocal);
                 var position = Vector3.Lerp(fromWorld, targetWorld, progress);
                 // Parabolic lift on top of the straight path; zero at both ends.

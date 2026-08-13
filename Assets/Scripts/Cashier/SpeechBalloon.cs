@@ -35,14 +35,13 @@ namespace PsyCurio.Shop
 
         private void LateUpdate()
         {
-            // Invisible most of the session — skip the billboard work then.
             if (canvasGroup.alpha <= 0f && activeShow == null)
             {
                 return;
             }
 
-            // Away from the camera position: world-space UI reads correctly
-            // when its forward axis points away from the viewer.
+            // World-space UI reads correctly when its forward axis points
+            // away from the viewer.
             transform.rotation = Quaternion.LookRotation(transform.position - viewCamera.transform.position);
         }
 

@@ -19,9 +19,8 @@ public static class SceneWiring
     [MenuItem("PsyCurio/Wire Scene Interactions")]
     public static void Apply()
     {
-        // Gate the WHOLE run on TMP: aborting one wiring step while the rest
-        // continues, saves and logs success would hide a null balloon until
-        // the first Say() throws in Play mode.
+        // Gate the whole run: a partial wiring that saves and logs success
+        // would hide the null balloon until the first Say() in Play mode.
         if (!EditorAssets.TmpEssentialsPresent())
         {
             Debug.LogError("SceneWiring: TMP essential resources missing — nothing wired. "
@@ -107,12 +106,10 @@ public static class SceneWiring
         {
             anchorArray.GetArrayElementAtIndex(i).objectReferenceValue = anchorsRoot.Find($"Queue_{i}");
         }
-        // Prefer the Mixamo character variants; the greybox mannequin remains
-        // the fallback if none have been set up yet.
+        // Mixamo character variants, mannequin fallback. Ascending order is
+        // load-bearing: the slim first character heads the line nearest the
+        // camera; the widest stands where the frustum fits his full body.
         var variantGuids = AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Prefabs/Bystanders" });
-        // Ascending: the slim first character heads the line nearest the
-        // camera (clearing the desk-corner sightline); the widest (The Boss)
-        // stands deepest, where the widening frustum fits his full body.
         var variants = variantGuids
             .Select(AssetDatabase.GUIDToAssetPath)
             .OrderBy(path => path)
@@ -173,8 +170,6 @@ public static class SceneWiring
         var cashier = Object.FindFirstObjectByType<Cashier>();
         if (cashier == null)
         {
-            // Loud, not silent: without this reference the refusal line and
-            // the register narration cannot be spoken at runtime.
             Debug.LogError("SceneWiring: no Cashier in scene — the controller's spoken "
                 + "feedback is unwired; run PsyCurio > Setup Cashier, then re-wire");
             return;
@@ -320,8 +315,8 @@ public static class SceneWiring
         var textObject = new GameObject("Text", typeof(RectTransform));
         textObject.transform.SetParent(bubble.transform, false);
         var text = textObject.AddComponent<TMPro.TextMeshProUGUI>();
-        // Explicit font: a script-created TMP component serializes font=null,
-        // which renders as no text at all — in editor and in player alike.
+        // A script-created TMP component serializes font=null, which renders
+        // as no text at all.
         text.font = EditorAssets.TmpFont();
         text.fontSize = 34f;
         text.color = new Color(0.09f, 0.09f, 0.11f);
@@ -332,9 +327,6 @@ public static class SceneWiring
         var balloon = balloonObject.AddComponent<SpeechBalloon>();
         var serializedBalloon = new SerializedObject(balloon);
         serializedBalloon.FindProperty("messageText").objectReferenceValue = text;
-        // Wired, not discovered: Camera.main at runtime is a tag lookup that
-        // breaks silently if the tag ever changes — the balloon keeps it only
-        // as an Awake fallback.
         serializedBalloon.FindProperty("viewCamera").objectReferenceValue = camera;
         serializedBalloon.ApplyModifiedPropertiesWithoutUndo();
 
@@ -357,8 +349,8 @@ public static class SceneWiring
         {
             register = registerObject.AddComponent<CashRegister>();
         }
-        // Recreated, not kept: an existing component carries the serialized
-        // defaults of whatever code version added it.
+        // Recreated so the component carries current defaults, not the
+        // serialized ones of whatever code version added it.
         var staleHighlight = registerObject.GetComponent<HoverHighlight>();
         if (staleHighlight != null)
         {
@@ -366,8 +358,6 @@ public static class SceneWiring
         }
         registerObject.AddComponent<HoverHighlight>();
 
-        // The register only forwards to the controller; the cashier reference
-        // lives on the controller (the sole domain bridge).
         var serialized = new SerializedObject(register);
         serialized.FindProperty("controller").objectReferenceValue = controller;
         serialized.ApplyModifiedPropertiesWithoutUndo();

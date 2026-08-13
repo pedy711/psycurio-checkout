@@ -32,8 +32,8 @@ public static class BystanderSetup
             Debug.LogError($"BystanderSetup: no character FBX files in {Folder}");
             return;
         }
-        // Validate every input before any destructive step (BuildIdleController
-        // deletes the committed controller the existing prefabs reference).
+        // Validate before any destructive step: BuildIdleController deletes
+        // the committed controller the existing prefabs reference.
         if (AssetImporter.GetAtPath(IdleClipPath) == null)
         {
             Debug.LogError($"BystanderSetup: missing {IdleClipPath} — run CashierSetup "
@@ -67,17 +67,16 @@ public static class BystanderSetup
         importer.ExtractTextures(Folder + "/Textures");
         importer.SaveAndReimport();
 
-        // Name-prefixed so same-named materials from different FBXs sharing
-        // this folder never overwrite each other.
+        // Name-prefixed: same-named materials from different FBXs share this
+        // folder and must not overwrite each other.
         var characterName = System.IO.Path.GetFileNameWithoutExtension(path);
         MixamoImportUtil.RemapToUrpMaterials(path, Folder + "/Materials", characterName + "_");
     }
 
     private static AnimatorController BuildIdleController()
     {
-        // The clip is resolved BEFORE the delete: destroying the committed
-        // controller and then throwing would leave every bystander prefab
-        // T-posed with a missing-controller reference.
+        // Resolve the clip BEFORE the delete — failing afterwards would leave
+        // every bystander prefab with a missing controller.
         var idleClip = AssetDatabase.LoadAllAssetsAtPath(IdleClipPath)
             .OfType<AnimationClip>()
             .FirstOrDefault(clip => !clip.name.Contains("__preview__"));

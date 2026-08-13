@@ -33,9 +33,7 @@ namespace PsyCurio.Shop
         public void TryPlace(ShopItemDefinition definition, Vector3 fromWorldPosition)
         {
             // Refuse before touching the domain: a basket entry without a
-            // matching view would desync removal-by-index for the rest of the
-            // session. Loud, because a failure here is always a wiring or
-            // content-authoring error.
+            // matching view would desync removal-by-index for the session.
             if (counterSlots == null || counterSlots.Count < Basket.Capacity)
             {
                 Debug.LogError("ShopController: counter slots missing or fewer than "
@@ -69,8 +67,7 @@ namespace PsyCurio.Shop
         }
 
         /// <summary>Register click: the cashier states the chosen items and
-        /// the total. Lives here, not on the register, so domain access stays
-        /// behind this single bridge.</summary>
+        /// the total. Lives here so domain access stays behind this bridge.</summary>
         public void NarratePurchase()
         {
             SayThroughCashier(narrator.Narrate(basket));
@@ -98,7 +95,6 @@ namespace PsyCurio.Shop
             counterSlots.Clear();
             if (cashier != null)
             {
-                // A delay-pending line must not play over the cleared counter.
                 cashier.Silence();
             }
             ShopReset?.Invoke();

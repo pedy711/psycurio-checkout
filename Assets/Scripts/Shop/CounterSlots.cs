@@ -39,9 +39,8 @@ namespace PsyCurio.Shop
             {
                 if (landingBurstPrefab != null)
                 {
-                    // The item's own position, not the spawn-time anchor: a
-                    // mid-flight shift-down may have retargeted it to a
-                    // different slot by the time it lands.
+                    // The item's position, not the spawn-time anchor — a
+                    // mid-flight shift-down may have retargeted it.
                     Instantiate(landingBurstPrefab, item.transform.position, Quaternion.identity);
                 }
                 ItemLanded?.Invoke();
@@ -62,8 +61,6 @@ namespace PsyCurio.Shop
 
         private IEnumerator PulseRoutine()
         {
-            // Markers and their resting colors are loop-invariant — resolve
-            // them once, not per anchor per frame.
             var block = new MaterialPropertyBlock();
             var markers = new (Renderer renderer, Color baseColor)[anchors.Length];
             for (var i = 0; i < anchors.Length; i++)

@@ -6,11 +6,8 @@ namespace PsyCurio.Shop.Interaction
     /// <summary>
     /// Tints all child renderers toward a warm highlight while hovered, via
     /// MaterialPropertyBlock so shared materials are never instantiated. The
-    /// tint must differ from white: textured materials keep a white base color
-    /// (detail lives in the texture), so lerping toward white would be
-    /// invisible exactly where the affordance matters most. Lives on every
-    /// clickable prefab; ClickRouter drives it only when the object is truly
-    /// clickable.
+    /// tint must differ from white: textured materials keep a white base
+    /// color, so a lerp toward white would be invisible on them.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HoverHighlight : MonoBehaviour, IHoverable

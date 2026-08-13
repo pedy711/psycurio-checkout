@@ -29,7 +29,7 @@ namespace PsyCurio.Shop.Therapist
 
         public void Open()
         {
-            // Neutral midpoint start — the patient moves it, not a default.
+            // Neutral midpoint: every rating is the patient's own movement.
             slider.SetValueWithoutNotify(50f);
             valueLabel.text = "50";
             promptRoot.SetActive(true);
